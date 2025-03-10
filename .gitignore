@@ -1,0 +1,18 @@
+# Evita arquivos do ambiente virtual
+venv/
+
+# Evita arquivos de credenciais e configurações locais
+.env
+
+# Arquivos gerados automaticamente pelo Python
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Banco de dados SQLite (caso não queira versioná-lo)
+gastos.db
+
+# Dependências específicas de pacotes
+*.egg-info/
+pip-log.txt

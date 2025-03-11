@@ -1,79 +1,151 @@
-# README - IA para Controle de Gastos via WhatsApp
+# 📌 WhatsApp Gastos AI
+**Sistema de controle de gastos via WhatsApp, integrado com Twilio e armazenado no PostgreSQL (Railway).** 🚀  
 
-## 📌 Descrição
-Este projeto consiste em uma IA que permite o registro de gastos via WhatsApp, ajudando no controle financeiro através de alertas e relatórios interativos. O sistema recebe mensagens, armazena as despesas e gera um **dashboard interativo** com insights sobre os gastos.
+---
 
-## 🚀 Funcionalidades
-- 📲 **Registro de Gastos pelo WhatsApp**
-- 📊 **Dashboard interativo para análise de despesas**
-- ⚠️ **Alertas de limite de orçamento**
-- 📅 **Relatórios semanais e mensais**
-- 🔎 **Classificação automática de categorias de gastos**
-- 📄 **Exportação de dados para CSV/Excel/Google Sheets**
-- 🔍 **Leitura de notas fiscais via OCR (Opcional)**
+## **📖 Visão Geral**
+Este projeto permite que usuários registrem seus gastos diretamente via **WhatsApp**, armazenando os dados em um **banco de dados PostgreSQL** hospedado no **Railway**. 
 
-## 🛠 Tecnologias Utilizadas
-- **API do WhatsApp** (Twilio)
-- **Python (FastAPI/Flask)**
-- **Banco de Dados (SQLite, MySQL, Firebase)**
-- **Streamlit (Dashboard de Gastos)**
-- **Machine Learning (spaCy/NLTK para NLP)**
-- **OCR (Tesseract ou EasyOCR para notas fiscais)**
+✅ **Mensagens no WhatsApp** → ✅ **Webhook do Twilio** → ✅ **FastAPI** → ✅ **Banco de Dados (PostgreSQL no Railway)**
 
-## 📂 Estrutura do Projeto
+Os usuários podem enviar mensagens como:
 ```
-whatsapp_gastos_ai/
-┣ 📂 backend/      # API para processar mensagens do WhatsApp
-┣ 📂 database/     # Banco de dados para armazenar os gastos
-┣ 📂 dashboard/    # Dashboard interativo com gráficos
-┣ 📂 notebook/     # Scripts para NLP e análise de dados
-┣ 📄 requirements.txt  # Dependências do projeto
-┣ 📄 README.md     # Documentação do projeto
-┗ 📄 .gitignore    # Arquivos ignorados pelo Git
+Almoço 25.90
+Uber 15.00
+Mercado 120.50
+```
+E receberão uma confirmação automática:
+```
+Gasto de R$25.90 em 'Alimentação' registrado com sucesso!
 ```
 
-## 📌 Como Executar o Projeto
-### 1️⃣ Clonar o repositório:
+Também é possível perguntar:
+```
+Total gasto no mês?
+```
+E o bot retorna o valor total gasto no mês.
+
+---
+
+## **🛠️ Tecnologias Utilizadas**
+- **Python** + **FastAPI** (Backend)
+- **Twilio API** (Integração com WhatsApp)
+- **PostgreSQL** (Banco de dados no Railway)
+- **Railway** (Deploy da API e banco de dados)
+- **Ngrok** (Para testes locais do webhook)
+- **Uvicorn** (Servidor ASGI)
+
+---
+
+## **🚀 Como Rodar o Projeto?**
+
+### **1️⃣ Clonar o Repositório**
 ```bash
 git clone https://github.com/seu-usuario/whatsapp_gastos_ai.git
 cd whatsapp_gastos_ai
 ```
 
-### 2️⃣ Instalar as dependências:
+### **2️⃣ Criar e Ativar um Ambiente Virtual**
+```bash
+python -m venv venv
+# Ativar no Windows
+venv\Scripts\activate
+# Ativar no Linux/macOS
+source venv/bin/activate
+```
+
+### **3️⃣ Instalar as Dependências**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Configurar credenciais do Twilio (para WhatsApp):
-Criar um arquivo `.env` com as credenciais:
+### **4️⃣ Criar o Arquivo `.env`**
+Crie um arquivo `.env` na raiz do projeto e adicione suas credenciais:
 ```
-TWILIO_ACCOUNT_SID=seu_sid
-TWILIO_AUTH_TOKEN=seu_token
-TWILIO_WHATSAPP_NUMBER=+seu_numero
+TWILIO_ACCOUNT_SID=seu_sid_aqui
+TWILIO_AUTH_TOKEN=seu_auth_token_aqui
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+DATABASE_URL=postgresql://usuario:senha@host:porta/database
 ```
 
-### 4️⃣ Rodar o backend:
+**Obs:** No Railway, essas variáveis já foram configuradas via **"Shared Variables"**.
+
+---
+
+## **🌐 Como Configurar o Webhook no Twilio**
+1️⃣ Acesse [Twilio Console](https://www.twilio.com/console).  
+2️⃣ Vá para **Messaging** > **Sandbox for WhatsApp**.  
+3️⃣ No campo **"When a message comes in"**, adicione sua API pública do Railway:  
+   ```
+   https://whatsappgastosai-production.up.railway.app/webhook
+   ```
+4️⃣ Defina **Method** como **POST**.  
+5️⃣ Clique em **Save**.  
+
+---
+
+## **▶️ Como Iniciar o Servidor Localmente**
 ```bash
-python backend/main.py
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
+Agora você pode testar no navegador:
+```
+http://127.0.0.1:8000/docs
 ```
 
-### 5️⃣ Rodar o dashboard:
+---
+
+## **🚀 Como Rodar no Railway?**
+
+### **1️⃣ Criar uma conta no Railway**
+Caso ainda não tenha, crie uma conta gratuita no [Railway](https://railway.app/).  
+
+### **2️⃣ Criar um novo projeto**
+1. Acesse [Railway](https://railway.app/dashboard)
+2. Clique em **"New Project"** e selecione **"Deploy from GitHub"**
+3. Conecte o Railway ao repositório do **whatsapp_gastos_ai**
+4. Aguarde a inicialização do serviço
+
+### **3️⃣ Configurar as Variáveis de Ambiente**
+1. No Railway, acesse a aba **"Variables"**
+2. Adicione as seguintes variáveis:
+   ```
+   TWILIO_ACCOUNT_SID=seu_sid
+   TWILIO_AUTH_TOKEN=seu_auth_token
+   TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+   DATABASE_URL=postgresql://usuario:senha@host:porta/database
+   ```
+3. Salve as alterações
+
+### **4️⃣ Criar um Banco de Dados no Railway**
+1. No dashboard do Railway, clique em **"New Service"**
+2. Escolha **PostgreSQL**
+3. Copie a **DATABASE_URL** gerada e adicione às variáveis de ambiente
+
+### **5️⃣ Criar o arquivo `Procfile`**
+O `Procfile` indica ao Railway como rodar o servidor:
+```
+web: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+### **6️⃣ Fazer o Deploy**
+Se tudo estiver configurado corretamente, o Railway **detectará automaticamente** o projeto e iniciará o deploy.
+Caso precise forçar um deploy manualmente:
 ```bash
-streamlit run dashboard/app.py
+railway up
 ```
 
-## 📈 Exemplo de Uso
-O usuário pode enviar mensagens como:
-- `"Almoço 25.90"` → Salva a despesa na categoria **Alimentação**
-- `"Uber 50"` → Salva na categoria **Transporte**
-- `"Total gasto no mês?"` → Retorna o saldo atual do mês
+### **7️⃣ Acessar a API pública no Railway**
+Após o deploy, o Railway gera um domínio público:
+```
+https://whatsappgastosai-production.up.railway.app/docs
+```
+Esse link pode ser usado para testar a API no navegador.
 
-## 🚀 Próximos Passos
-- [ ] Criar o backend para receber mensagens do WhatsApp
-- [ ] Configurar a API Twilio
-- [ ] Criar banco de dados para armazenar os gastos
-- [ ] Desenvolver o dashboard com gráficos
-- [ ] Implementar alertas e relatórios
+---
 
-## 🔗 Contato
-Projeto desenvolvido por **André Ruperto**. Contribuições são bem-vindas! 😊
+## **📊 Próximos Passos**
+- 📌 Criar um **dashboard interativo** com os gastos 📊
+- 📌 Implementar **gráficos de categorias** de gastos 🎯
+- 📌 Enviar **alertas de gastos altos** via WhatsApp 📲
+- 📌 Adicionar **relatórios mensais automáticos** 📝

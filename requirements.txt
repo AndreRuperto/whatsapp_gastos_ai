@@ -5,3 +5,4 @@ dotenv
 python-dotenv
 python-multipart
 psycopg2-binary
+streamlit

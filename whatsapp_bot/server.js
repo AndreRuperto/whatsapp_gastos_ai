@@ -52,8 +52,8 @@ client.on('message', async msg => {
 
     try {
         console.log("🔄 Enviando para API FastAPI...");
-        const response = await fetch("http://127.0.0.1:8000/webhook", {
-            method: "POST",
+        const response = await fetch("whatsapp-fast-api.up.railway.app/webhook", {
+            method: "POST", //http://127.0.0.1:8000/webhook
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
             },

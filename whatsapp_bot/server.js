@@ -2,6 +2,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
+const puppeteer = require('puppeteer');
 
 dotenv.config(); // Carrega variáveis de ambiente do arquivo .env
 
@@ -10,6 +11,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos
 
 const WHATSAPP_NUMBER = process.env.WHATSAPP_NUMBER || "556191178999";
+
+const browser = puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
 
 const client = new Client({
     authStrategy: new LocalAuth({

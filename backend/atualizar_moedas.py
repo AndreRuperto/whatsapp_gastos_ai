@@ -1,6 +1,8 @@
 import requests
 import json
 import datetime
+import os
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -48,7 +50,7 @@ def atualizar_json():
         "moedas_disponiveis": funcionando
     }
 
-    with open("moedas.json", "w", encoding="utf-8") as f:
+    with open("backend/data/moedas.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
     print("✅ Arquivo `moedas.json` atualizado com sucesso!")

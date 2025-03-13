@@ -1,18 +1,48 @@
-# Evita arquivos do ambiente virtual
+# 🔹 Arquivos e pastas do ambiente virtual
 venv/
-
-# Evita arquivos de credenciais e configurações locais
-.env
-
-# Arquivos gerados automaticamente pelo Python
-__pycache__/
 *.pyc
+__pycache__/
 *.pyo
+*.pyd
+*.pdb
+*.so
+
+# 🔹 Arquivos de configuração sensíveis
+.env
+.env.example
+
+# 🔹 Dependências do Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# 🔹 Arquivos do WhatsApp Web.js
+whatsapp_bot/.wwebjs_auth/
+whatsapp_bot/.wwebjs_cache/
+
+# 🔹 Arquivos temporários e de cache
 *.log
+*.sqlite
+*.sqlite3
+.DS_Store
+*.swp
+*.swo
+*.swn
 
-# Banco de dados SQLite (caso não queira versioná-lo)
-gastos.db
+# 🔹 Arquivos de build do Streamlit
+.streamlit/
 
-# Dependências específicas de pacotes
-*.egg-info/
-pip-log.txt
+# 🔹 Arquivos do Railway e do Python
+*.db
+instance/
+*.pytest_cache/
+*.coverage
+htmlcov/
+.idea/
+.vscode/
+.mypy_cache/
+
+# Ignorar modelos treinados do spaCy
+nlp_categorizer/model_spacy/

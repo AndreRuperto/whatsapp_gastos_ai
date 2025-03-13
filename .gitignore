@@ -16,7 +16,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+#package-lock.json
 
 # 🔹 Arquivos do WhatsApp Web.js
 whatsapp_bot/.wwebjs_auth/

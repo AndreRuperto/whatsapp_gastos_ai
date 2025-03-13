@@ -5,7 +5,6 @@ import datetime
 import requests  # Importado para fazer chamadas HTTP
 from dotenv import load_dotenv
 import json
-import locale
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -49,8 +48,7 @@ conn.close()
 
 # URL do WhatsApp Bot (Servidor Node.js)
 WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL", "http://localhost:3000/send")
-API_COTACAO = "https://economia.awesomeapi.com.br/json/last/"
-locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
+API_COTACAO = os.getenv("API_COTACAO", "https://economia.awesomeapi.com.br/json/last/")
 
 with open("backend/moedas.json", "r", encoding="utf-8") as file:
     dados_moedas = json.load(file)
@@ -75,11 +73,11 @@ async def receber_mensagem(
     Recebe mensagens do WhatsApp e processa conforme necessário.
     """
     mensagem = Body.strip()
-    telefone = From.replace("whatsapp:", "").replace("+", "")  # Formata número corretamente
+    telefone = From.replace("whatsapp:", "").replace("+", "")
 
     if mensagem.lower() == "total gasto no mês?":
         total = calcular_total_gasto()
-        resposta = f"📊 Total gasto no mês: R${total:.2f}"
+        resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
@@ -107,7 +105,7 @@ async def receber_mensagem(
     descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
     salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
     
-    resposta = f"✅ Gasto de R${valor:.2f} em '{categoria}' registrado com sucesso!"
+    resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
     enviar_mensagem_whatsapp(telefone, resposta)
 
     return {"status": "OK", "resposta": resposta}
@@ -118,22 +116,22 @@ def obter_cotacao_principais():
     """
     moedas = ["USD", "EUR", "GBP", "BTC", "ETH"]
     
-    # Corrigindo a URL para usar ',' em vez de '-'
+    # Construção correta da URL da API
     url = f"{API_COTACAO}" + ",".join([f"{m}-BRL" for m in moedas])
-    print(f"📡 Buscando cotações na URL: {url}")  # Debug para verificar a URL gerada
+    print(f"📡 Buscando cotações na URL: {url}")
 
     try:
         response = requests.get(url)
         data = response.json()
-        print("📊 Dados recebidos:", data)  # Debug para ver a resposta da API
-        
+        print("📊 Dados recebidos:", data)
+
         cotacoes = []
         for moeda in moedas:
             key = f"{moeda}BRL"
             if key in data:
                 valor = float(data[key]['bid'])
                 emoji = MOEDA_EMOJIS.get(moeda, "💰")
-                valor_formatado = locale.currency(valor, grouping=True, symbol="R$")
+                valor_formatado = f"R$ {format(valor, ',.2f').replace(',', '.')}"
                 cotacoes.append(f"{emoji} {moeda}: {valor_formatado}")
         
         if not cotacoes:

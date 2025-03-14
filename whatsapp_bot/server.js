@@ -2,36 +2,28 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 dotenv.config(); // Carrega variáveis de ambiente do arquivo .env
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos
-
-const WHATSAPP_NUMBER = process.env.WHATSAPP_NUMBER || "556191178999";
-
-const browser = puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+const PORT = process.env.PORT || 3000;
 
 const client = new Client({
-    authStrategy: new LocalAuth({
-        clientId: process.env.SESSION_NAME || "whatsapp_session"
-    }),
+    authStrategy: new LocalAuth(),
     puppeteer: {
-        headless: true, // Executar sem interface gráfica (necessário no Railway)
+        executablePath: '/usr/bin/google-chrome-stable',
+        headless: true,
         args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu"
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
         ]
     }
 });
@@ -39,14 +31,18 @@ const client = new Client({
 // Variável para armazenar o QR Code temporariamente
 let qrCodeData = "";
 
-// Enviar o QR Code para o frontend (mas não exibir no terminal)
+// Evento de QR Code - Armazena o QR Code para exibição no frontend
 client.on('qr', (qr) => {
-    qrCodeData = qr; // Armazena o QR Code para exibição no frontend
+    qrCodeData = qr;
 });
 
-// Servir QR Code via API para exibição no frontend
+// **Rota para servir o QR Code**
 app.get('/qrcode', (req, res) => {
-    res.json({ qr: qrCodeData });
+    if (qrCodeData) {
+        res.json({ qr: qrCodeData });
+    } else {
+        res.status(404).json({ error: "QR Code ainda não gerado." });
+    }
 });
 
 client.on('ready', () => {
@@ -58,7 +54,7 @@ client.on('message', async msg => {
 
     try {
         console.log("🔄 Enviando para API FastAPI...");
-        const response = await fetch("whatsapp-fast-api.up.railway.app/webhook", {
+        const response = await fetch("https://whatsapp-fast-api.up.railway.app/webhook", {
             method: "POST", //http://127.0.0.1:8000/webhook
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
@@ -69,7 +65,6 @@ client.on('message', async msg => {
         const json = await response.json();
         console.log("📡 Resposta da API:", json);
 
-        // **Aqui está a parte que estava faltando**
         if (json.resposta) {
             await client.sendMessage(msg.from, json.resposta);
             console.log("✅ Resposta enviada ao usuário!");
@@ -83,7 +78,7 @@ client.on('message', async msg => {
 // Inicia o WhatsApp Web.js
 client.initialize();
 
-// Rota para envio de mensagens
+// **Rota para envio de mensagens**
 app.post('/send', async (req, res) => {
     const { number, message } = req.body;
 
@@ -101,13 +96,12 @@ app.post('/send', async (req, res) => {
     }
 });
 
-// Servir a página index.html
+// **Rota para servir a página index.html**
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Iniciar o servidor Express
-const PORT = process.env.PORT || 3000;
+// **Iniciar o servidor Express**
 app.listen(PORT, () => {
     console.log(`🚀 API rodando em http://localhost:${PORT}`);
 });

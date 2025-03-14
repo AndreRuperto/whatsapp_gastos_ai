@@ -11,10 +11,35 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos
 const PORT = process.env.PORT || 3000;
 
+const puppeteer = require('puppeteer-core');
+const chromePaths = [
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/local/bin/google-chrome',
+    '/usr/bin/chromium-browser', // Alternativa se Chrome não estiver disponível
+];
+
+function encontrarChrome() {
+    for (const path of chromePaths) {
+        if (require('fs').existsSync(path)) {
+            console.log(`✅ Chrome encontrado em: ${path}`);
+            return path;
+        }
+    }
+    console.error("❌ Nenhuma instalação do Chrome encontrada!");
+    return null;
+}
+
+const chromePath = encontrarChrome();
+
+if (!chromePath) {
+    throw new Error("Google Chrome não foi encontrado! Verifique se ele está instalado corretamente.");
+}
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        executablePath: '/usr/bin/google-chrome-stable',
+        executablePath: chromePath,
         headless: true,
         args: [
             '--no-sandbox',

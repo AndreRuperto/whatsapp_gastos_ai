@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "postinstall": "apt-get update && apt-get install -y libnss3",
     "start": "node server.js"
   },
   "keywords": [],

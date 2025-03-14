@@ -11,7 +11,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos
 const PORT = process.env.PORT || 3000;
 
-const puppeteer = require('puppeteer-core');
 const chromePaths = [
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',

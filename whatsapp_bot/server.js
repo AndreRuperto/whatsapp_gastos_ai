@@ -9,31 +9,8 @@ dotenv.config(); // Carrega variáveis de ambiente do arquivo .env
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Servir arquivos estáticos
-const PORT = process.env.PORT || 3000;
-
-const chromePaths = [
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/google-chrome',
-    '/usr/local/bin/google-chrome',
-    '/usr/bin/chromium-browser', // Alternativa se Chrome não estiver disponível
-];
-
-function encontrarChrome() {
-    for (const path of chromePaths) {
-        if (require('fs').existsSync(path)) {
-            console.log(`✅ Chrome encontrado em: ${path}`);
-            return path;
-        }
-    }
-    console.error("❌ Nenhuma instalação do Chrome encontrada!");
-    return null;
-}
-
-const chromePath = encontrarChrome();
-
-if (!chromePath) {
-    throw new Error("Google Chrome não foi encontrado! Verifique se ele está instalado corretamente.");
-}
+const PORT = process.env.PORT;
+const chromePath = process.env.CHROME_PATH;
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -126,6 +103,6 @@ app.get("/", (req, res) => {
 });
 
 // **Iniciar o servidor Express**
-app.listen(PORT, () => {
-    console.log(`🚀 API rodando em http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 API rodando na porta ${PORT}`);
 });

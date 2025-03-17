@@ -52,7 +52,7 @@ cursor.close()
 conn.close()
 
 # URL do WhatsApp Bot (Servidor Node.js)
-WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL", "http://localhost:3000/send")
+WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
 API_COTACAO = os.getenv("API_COTACAO", "https://economia.awesomeapi.com.br/json/last/")
 
 with open("backend/data/moedas.json", "r", encoding="utf-8") as file:

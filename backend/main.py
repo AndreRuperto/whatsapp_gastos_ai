@@ -206,28 +206,28 @@ def processar_mensagem(mensagem: str):
         meio_pagamento = "Desconhecido"
         parcelas = 1
         descricao = ""
-        
+
         # Verifica se há um valor numérico e meio de pagamento
         for i, parte in enumerate(partes):
             if parte.replace(".", "").isdigit():  # Verifica se é um número
                 valor = float(parte)
-                
+
                 # Se o elemento anterior for "x" e o antepenúltimo for um número, é parcelamento
                 if i >= 2 and partes[i - 1] == "x" and partes[i - 2].isdigit():
                     parcelas = int(partes[i - 2])
                     descricao = " ".join(partes[:i - 2])
                 else:
                     descricao = " ".join(partes[:i])
-                
+
                 # Verifica se o próximo elemento é um meio de pagamento
                 if i + 1 < len(partes) and partes[i + 1] in MEIOS_PAGAMENTO_VALIDOS:
                     meio_pagamento = partes[i + 1]
                 break
-        
+
         # Se não encontrou um valor, retorna erro
         if valor == 0.0:
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
-        
+
         # Definir a categoria com base na descrição
         categoria = definir_categoria(descricao)
 

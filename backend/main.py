@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, Request, Form
 import os
 import psycopg2
@@ -5,6 +6,10 @@ import datetime
 import requests
 from dotenv import load_dotenv
 import json
+
+# Configuração básica de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -63,6 +68,7 @@ MOEDA_EMOJIS = {
     "ETH": "💎"
 }
 
+
 @app.post("/webhook")
 async def receber_mensagem(
     Body: str = Form(...),
@@ -71,7 +77,7 @@ async def receber_mensagem(
     mensagem = Body.strip()
     telefone = From.replace("whatsapp:", "").replace("+", "")
 
-    print(f"📩 Mensagem recebida: '{mensagem}' de {telefone}")
+    logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
     # 📌 Comandos Específicos
     if mensagem.lower() == "total gasto no mês?":
@@ -102,7 +108,7 @@ async def receber_mensagem(
         return {"status": "OK", "resposta": resposta}
 
     # 📌 Processamento de GASTOS
-    print("🔍 Tentando processar mensagem como gasto...")
+    logger.info("🔍 Tentando processar mensagem como gasto...")
 
     descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
 
@@ -112,8 +118,10 @@ async def receber_mensagem(
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "ERRO", "resposta": resposta}
 
-    print(f"✅ Gasto reconhecido: {descricao} | Valor: {valor} | Categoria: {categoria} | "
-          f"Meio de Pagamento: {meio_pagamento} | Parcelas: {parcelas}")
+    logger.info(
+        "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
+        descricao, valor, categoria, meio_pagamento, parcelas
+    )
 
     salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
 
@@ -128,56 +136,53 @@ def processar_mensagem(mensagem: str):
     Inclui logs detalhados para entender cada etapa do parsing.
     """
     try:
-        # 1) Lowercase e split
         partes = mensagem.lower().split()
-        print(f"🔎 Mensagem após split: {partes}")
+        logger.info("🔎 Mensagem após split: %s", partes)
 
         valor = 0.0
         meio_pagamento = "Desconhecido"
         parcelas = 1
         descricao = ""
 
-        # 2) Iterar sobre cada parte para encontrar valor
+        # Iterar sobre cada parte para encontrar valor
         for i, parte in enumerate(partes):
-            print(f"   - Verificando parte [{i}]: '{parte}'")
+            logger.info("   - Verificando parte [%d]: '%s'", i, parte)
 
-            # a) Tenta identificar se a parte atual é um número (mesmo com ponto)
+            # Tenta identificar se a parte atual é um número (mesmo com ponto)
             if parte.replace(".", "").isdigit():
                 valor = float(parte)
-                print(f"   -> Valor numérico encontrado: {valor}")
+                logger.info("   -> Valor numérico encontrado: %.2f", valor)
 
-                # b) Verifica se há sintaxe de parcelamento (ex: "2 x 50")
-                #    Se o elemento anterior for "x" e o antepenúltimo for um número.
+                # Verifica sintaxe de parcelamento (ex: "2 x 50")
                 if i >= 2 and partes[i - 1] == "x" and partes[i - 2].isdigit():
                     parcelas = int(partes[i - 2])
                     descricao = " ".join(partes[:i - 2])
-                    print(f"   -> Parcelamento identificado: {parcelas}x. Descrição parcial: '{descricao}'")
+                    logger.info("   -> Parcelamento identificado: %dx. Descrição parcial: '%s'", parcelas, descricao)
                 else:
                     descricao = " ".join(partes[:i])
-                    print(f"   -> Descrição identificada sem parcelamento: '{descricao}'")
+                    logger.info("   -> Descrição identificada sem parcelamento: '%s'", descricao)
 
-                # c) Verifica se o próximo elemento é meio de pagamento (pix, crédito, débito, etc.)
+                # Verifica se o próximo elemento é meio de pagamento (pix, crédito, débito)
                 if i + 1 < len(partes):
                     possivel_meio = partes[i + 1]
                     if possivel_meio in MEIOS_PAGAMENTO_VALIDOS:
                         meio_pagamento = possivel_meio
-                        print(f"   -> Meio de pagamento identificado: '{meio_pagamento}'")
+                        logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
 
-                break  # Interrompe o loop principal, pois o valor já foi encontrado
+                break  # Interrompe o loop pois o valor já foi encontrado
 
-        # 3) Verifica se não encontrou valor
         if valor == 0.0:
-            print("⚠️ Nenhum valor encontrado na mensagem!")
+            logger.warning("⚠️ Nenhum valor encontrado na mensagem!")
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
-        # 4) Define categoria
+        # Define categoria
         categoria = definir_categoria(descricao)
-        print(f"   -> Categoria definida: '{categoria}'")
+        logger.info("   -> Categoria definida: '%s'", categoria)
 
         return descricao.strip(), valor, categoria, meio_pagamento, parcelas
 
     except Exception as e:
-        print(f"❌ Erro ao processar mensagem: {str(e)}")
+        logger.exception("❌ Erro ao processar mensagem:")
         return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
 
@@ -189,7 +194,7 @@ def definir_categoria(descricao: str):
     Seu dicionário de categorias, com palavras-chave.
     """
     categorias = {
-        # 🍽️ Alimentação (35 palavras-chave)
+        # 🍽️ Alimentação
         "almoço": "Alimentação",
         "jantar": "Alimentação",
         "café": "Alimentação",
@@ -477,9 +482,9 @@ def definir_categoria(descricao: str):
     }
 
     # Percorre o dicionário e verifica se a palavra-chave está na descrição
-    for chave, categoria in categorias.items():
+    for chave, cat in categorias.items():
         if chave in descricao.lower():
-            return categoria
+            return cat
     return "Outros"
 
 
@@ -529,6 +534,7 @@ def registrar_salario(mensagem):
         conn.close()
         return {"status": "💰 Salário registrado com sucesso!"}
     except:
+        logger.exception("❌ Erro ao registrar salário:")
         return {"status": "❌ Erro ao registrar salário"}
 
 
@@ -546,7 +552,9 @@ def registrar_fatura_cartao(mensagem):
         conn.close()
         return {"status": "💳 Fatura do cartão registrada com sucesso!"}
     except:
+        logger.exception("❌ Erro ao registrar fatura:")
         return {"status": "❌ Erro ao registrar fatura"}
+
 
 def obter_cotacao_principais():
     """
@@ -554,12 +562,12 @@ def obter_cotacao_principais():
     """
     moedas = ["USD", "EUR", "GBP", "BTC", "ETH"]
     url = f"{API_COTACAO}" + ",".join([f"{m}-BRL" for m in moedas])
-    print(f"📡 Buscando cotações na URL: {url}")
+    logger.info("📡 Buscando cotações na URL: %s", url)
 
     try:
         response = requests.get(url)
         data = response.json()
-        print("📊 Dados recebidos:", data)
+        logger.info("📊 Dados recebidos: %s", data)
 
         cotacoes = []
         for moeda in moedas:
@@ -576,7 +584,7 @@ def obter_cotacao_principais():
         return "📈 Cotações principais:\n\n" + "\n".join(cotacoes)
 
     except Exception as e:
-        print("❌ Erro ao buscar cotações:", str(e))  # Log de erro detalhado
+        logger.exception("❌ Erro ao buscar cotações:")
         return f"❌ Erro ao buscar cotações: {str(e)}"
 
 
@@ -598,6 +606,7 @@ def obter_cotacao(moeda: str):
         else:
             return "⚠️ Moeda não encontrada. Use códigos como USD, EUR, BTC..."
     except Exception as e:
+        logger.exception("❌ Erro ao buscar cotação:")
         return f"❌ Erro ao buscar cotação: {str(e)}"
 
 
@@ -615,4 +624,5 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
         response.raise_for_status()
         return {"status": "Mensagem enviada"}
     except requests.exceptions.RequestException as e:
+        logger.exception("❌ Erro ao enviar mensagem via WhatsApp:")
         return {"status": "Erro ao enviar mensagem", "error": str(e)}

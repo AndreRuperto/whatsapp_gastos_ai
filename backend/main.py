@@ -75,6 +75,9 @@ async def receber_mensagem(
     mensagem = Body.strip()
     telefone = From.replace("whatsapp:", "").replace("+", "")
 
+    print(f"📩 Mensagem recebida: {mensagem} de {telefone}")
+
+    # 📌 Comandos Específicos
     if mensagem.lower() == "total gasto no mês?":
         total = calcular_total_gasto()
         resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
@@ -91,7 +94,7 @@ async def receber_mensagem(
         enviar_mensagem_whatsapp(telefone, status["status"])
         return status
     
-    if mensagem == "cotação":
+    if mensagem.lower() == "cotação":
         resposta = obter_cotacao_principais()
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
@@ -102,9 +105,21 @@ async def receber_mensagem(
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
+    # 📌 Processamento de GASTOS
+    print("🔍 Tentando processar mensagem como gasto...")
+
     descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
+
+    # ⚠️ Verificação de erro no processamento
+    if descricao == "Erro" or valor == 0.0:
+        resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
+        enviar_mensagem_whatsapp(telefone, resposta)
+        return {"status": "ERRO", "resposta": resposta}
+
+    print(f"✅ Gasto reconhecido: {descricao} | Valor: {valor} | Categoria: {categoria} | Meio de Pagamento: {meio_pagamento} | Parcelas: {parcelas}")
+
     salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
-    
+
     resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
     enviar_mensagem_whatsapp(telefone, resposta)
 

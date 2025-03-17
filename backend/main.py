@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Form
 import os
 import psycopg2
 import datetime
-import requests  # Importado para fazer chamadas HTTP
+import requests
 from dotenv import load_dotenv
 import json
 
@@ -53,29 +53,25 @@ API_COTACAO = os.getenv("API_COTACAO", "https://economia.awesomeapi.com.br/json/
 with open("backend/data/moedas.json", "r", encoding="utf-8") as file:
     dados_moedas = json.load(file)
 
-# Ajuste para acessar corretamente as moedas disponíveis
 MOEDAS = dados_moedas.get("moedas_disponiveis", {})
 
 MOEDA_EMOJIS = {
-    "USD": "🇺🇸",  # Dólar Americano (bandeira dos EUA)
-    "EUR": "🇺🇳",  # Euro (bandeira da ONU)
-    "GBP": "🏴",  # Libra Esterlina (bandeira da Inglaterra)
-    "BTC": "🪙",   # Bitcoin (emoji de moeda)
-    "ETH": "💎"    # Ethereum (diamante)
+    "USD": "🇺🇸",
+    "EUR": "🇺🇳",
+    "GBP": "🏴",
+    "BTC": "🪙",
+    "ETH": "💎"
 }
 
 @app.post("/webhook")
 async def receber_mensagem(
-    Body: str = Form(...), 
+    Body: str = Form(...),
     From: str = Form(...)
 ):
-    """
-    Recebe mensagens do WhatsApp e processa conforme necessário.
-    """
     mensagem = Body.strip()
     telefone = From.replace("whatsapp:", "").replace("+", "")
 
-    print(f"📩 Mensagem recebida: {mensagem} de {telefone}")
+    print(f"📩 Mensagem recebida: '{mensagem}' de {telefone}")
 
     # 📌 Comandos Específicos
     if mensagem.lower() == "total gasto no mês?":
@@ -93,7 +89,7 @@ async def receber_mensagem(
         status = registrar_fatura_cartao(mensagem)
         enviar_mensagem_whatsapp(telefone, status["status"])
         return status
-    
+
     if mensagem.lower() == "cotação":
         resposta = obter_cotacao_principais()
         enviar_mensagem_whatsapp(telefone, resposta)
@@ -116,120 +112,67 @@ async def receber_mensagem(
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "ERRO", "resposta": resposta}
 
-    print(f"✅ Gasto reconhecido: {descricao} | Valor: {valor} | Categoria: {categoria} | Meio de Pagamento: {meio_pagamento} | Parcelas: {parcelas}")
+    print(f"✅ Gasto reconhecido: {descricao} | Valor: {valor} | Categoria: {categoria} | "
+          f"Meio de Pagamento: {meio_pagamento} | Parcelas: {parcelas}")
 
     salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
 
     resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
     enviar_mensagem_whatsapp(telefone, resposta)
-
     return {"status": "OK", "resposta": resposta}
 
-def obter_cotacao_principais():
-    """
-    Obtém as cotações das 5 principais moedas (USD, EUR, GBP, BTC, ETH).
-    """
-    moedas = ["USD", "EUR", "GBP", "BTC", "ETH"]
-    
-    # Construção correta da URL da API
-    url = f"{API_COTACAO}" + ",".join([f"{m}-BRL" for m in moedas])
-    print(f"📡 Buscando cotações na URL: {url}")
-
-    try:
-        response = requests.get(url)
-        data = response.json()
-        print("📊 Dados recebidos:", data)
-
-        cotacoes = []
-        for moeda in moedas:
-            key = f"{moeda}BRL"
-            if key in data:
-                valor = float(data[key]['bid'])
-                emoji = MOEDA_EMOJIS.get(moeda, "💰")
-                valor_formatado = f"R$ {format(valor, ',.2f').replace(',', '.')}"
-                cotacoes.append(f"{emoji} {moeda}: {valor_formatado}")
-        
-        if not cotacoes:
-            return "⚠️ Nenhuma cotação encontrada. Verifique a API."
-        
-        return "📈 Cotações principais:\n\n" + "\n".join(cotacoes)
-
-    except Exception as e:
-        print("❌ Erro ao buscar cotações:", str(e))  # Debug
-        return f"❌ Erro ao buscar cotações: {str(e)}"
-
-def obter_cotacao(moeda: str):
-    """
-    Obtém a cotação da moeda informada e retorna o nome da moeda.
-    """
-    moeda = moeda.upper()
-    nome_moeda = MOEDAS.get(moeda, "Moeda não encontrada")
-    
-    try:
-        response = requests.get(f"https://economia.awesomeapi.com.br/json/last/{moeda}-BRL")
-        data = response.json()
-        key = f"{moeda}BRL"
-        
-        if key in data:
-            valor = float(data[key]['bid'])
-            return f"💰 {nome_moeda} ({moeda}/BRL): R${valor:.2f}"
-        else:
-            return "⚠️ Moeda não encontrada. Use códigos como USD, EUR, BTC..."
-    except Exception as e:
-        return f"❌ Erro ao buscar cotação: {str(e)}"
-
-def enviar_mensagem_whatsapp(telefone, mensagem):
-    """
-    Envia uma mensagem via WhatsApp Web.js para o usuário correto.
-    """
-    payload = {
-        "number": telefone.replace("whatsapp:", "").replace("+", ""),  # Número do usuário
-        "message": mensagem
-    }
-    
-    try:
-        response = requests.post(WHATSAPP_BOT_URL, json=payload)
-        response.raise_for_status()
-        return {"status": "Mensagem enviada"}
-    except requests.exceptions.RequestException as e:
-        return {"status": "Erro ao enviar mensagem", "error": str(e)}
-
-MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
 
 def processar_mensagem(mensagem: str):
     """
     Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.
+    Inclui logs detalhados para entender cada etapa do parsing.
     """
     try:
+        # 1) Lowercase e split
         partes = mensagem.lower().split()
+        print(f"🔎 Mensagem após split: {partes}")
+
         valor = 0.0
         meio_pagamento = "Desconhecido"
         parcelas = 1
         descricao = ""
 
-        # Verifica se há um valor numérico e meio de pagamento
+        # 2) Iterar sobre cada parte para encontrar valor
         for i, parte in enumerate(partes):
-            if parte.replace(".", "").isdigit():  # Verifica se é um número
-                valor = float(parte)
+            print(f"   - Verificando parte [{i}]: '{parte}'")
 
-                # Se o elemento anterior for "x" e o antepenúltimo for um número, é parcelamento
+            # a) Tenta identificar se a parte atual é um número (mesmo com ponto)
+            if parte.replace(".", "").isdigit():
+                valor = float(parte)
+                print(f"   -> Valor numérico encontrado: {valor}")
+
+                # b) Verifica se há sintaxe de parcelamento (ex: "2 x 50")
+                #    Se o elemento anterior for "x" e o antepenúltimo for um número.
                 if i >= 2 and partes[i - 1] == "x" and partes[i - 2].isdigit():
                     parcelas = int(partes[i - 2])
                     descricao = " ".join(partes[:i - 2])
+                    print(f"   -> Parcelamento identificado: {parcelas}x. Descrição parcial: '{descricao}'")
                 else:
                     descricao = " ".join(partes[:i])
+                    print(f"   -> Descrição identificada sem parcelamento: '{descricao}'")
 
-                # Verifica se o próximo elemento é um meio de pagamento
-                if i + 1 < len(partes) and partes[i + 1] in MEIOS_PAGAMENTO_VALIDOS:
-                    meio_pagamento = partes[i + 1]
-                break
+                # c) Verifica se o próximo elemento é meio de pagamento (pix, crédito, débito, etc.)
+                if i + 1 < len(partes):
+                    possivel_meio = partes[i + 1]
+                    if possivel_meio in MEIOS_PAGAMENTO_VALIDOS:
+                        meio_pagamento = possivel_meio
+                        print(f"   -> Meio de pagamento identificado: '{meio_pagamento}'")
 
-        # Se não encontrou um valor, retorna erro
+                break  # Interrompe o loop principal, pois o valor já foi encontrado
+
+        # 3) Verifica se não encontrou valor
         if valor == 0.0:
+            print("⚠️ Nenhum valor encontrado na mensagem!")
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
-        # Definir a categoria com base na descrição
+        # 4) Define categoria
         categoria = definir_categoria(descricao)
+        print(f"   -> Categoria definida: '{categoria}'")
 
         return descricao.strip(), valor, categoria, meio_pagamento, parcelas
 
@@ -238,7 +181,13 @@ def processar_mensagem(mensagem: str):
         return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
 
+MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
+
+
 def definir_categoria(descricao: str):
+    """
+    Seu dicionário de categorias, com palavras-chave.
+    """
     categorias = {
         # 🍽️ Alimentação (35 palavras-chave)
         "almoço": "Alimentação",
@@ -278,7 +227,7 @@ def definir_categoria(descricao: str):
         "milkshake": "Alimentação",
         "cupcake": "Alimentação",
 
-        # 🚗 Transporte (20 palavras-chave)
+        # 🚗 Transporte
         "uber": "Transporte",
         "99": "Transporte",
         "ônibus": "Transporte",
@@ -296,11 +245,11 @@ def definir_categoria(descricao: str):
         "mototáxi": "Transporte",
         "passagem": "Transporte",
         "aéreo": "Transporte",
-        "uber eats": "Transporte",      # Se for entrega, pode recategorizar
+        "uber eats": "Transporte",
         "combustível": "Transporte",
         "lava rápido": "Transporte",
 
-        # 🏠 Moradia (20 palavras-chave)
+        # 🏠 Moradia
         "aluguel": "Moradia",
         "condomínio": "Moradia",
         "iptu": "Moradia",
@@ -322,7 +271,7 @@ def definir_categoria(descricao: str):
         "gás encanado": "Moradia",
         "portão": "Moradia",
 
-        # 🔌 Contas e Serviços Públicos (15 palavras-chave)
+        # 🔌 Contas e Serviços Públicos
         "luz": "Contas",
         "água": "Contas",
         "internet": "Contas",
@@ -339,7 +288,7 @@ def definir_categoria(descricao: str):
         "licenciamento": "Contas",
         "multas": "Contas",
 
-        # 🛒 Supermercado (15 palavras-chave)
+        # 🛒 Supermercado
         "mercado": "Supermercado",
         "compras": "Supermercado",
         "hortifruti": "Supermercado",
@@ -356,7 +305,7 @@ def definir_categoria(descricao: str):
         "suprimentos": "Supermercado",
         "armazém": "Supermercado",
 
-        # 🎭 Lazer e Entretenimento (15 palavras-chave)
+        # 🎭 Lazer e Entretenimento
         "cinema": "Lazer",
         "show": "Lazer",
         "teatro": "Lazer",
@@ -373,7 +322,7 @@ def definir_categoria(descricao: str):
         "viagem": "Lazer",
         "ingresso": "Lazer",
 
-        # 🏥 Saúde (20 palavras-chave)
+        # 🏥 Saúde
         "farmácia": "Saúde",
         "remédio": "Saúde",
         "médico": "Saúde",
@@ -395,7 +344,7 @@ def definir_categoria(descricao: str):
         "cirurgia": "Saúde",
         "bem-estar": "Saúde",
 
-        # 🎓 Educação (10 palavras-chave)
+        # 🎓 Educação
         "faculdade": "Educação",
         "curso": "Educação",
         "apostila": "Educação",
@@ -407,7 +356,7 @@ def definir_categoria(descricao: str):
         "aula particular": "Educação",
         "material escolar": "Educação",
 
-        # 💻 Tecnologia (15 palavras-chave)
+        # 💻 Tecnologia
         "notebook": "Tecnologia",
         "computador": "Tecnologia",
         "fones de ouvido": "Tecnologia",
@@ -424,7 +373,7 @@ def definir_categoria(descricao: str):
         "console": "Tecnologia",
         "carregador": "Tecnologia",
 
-        # 👗 Vestuário (15 palavras-chave)
+        # 👗 Vestuário
         "roupa": "Vestuário",
         "tênis": "Vestuário",
         "calçado": "Vestuário",
@@ -441,7 +390,7 @@ def definir_categoria(descricao: str):
         "cinto": "Vestuário",
         "biquíni": "Vestuário",
 
-        # 🎁 Presentes (6 palavras-chave)
+        # 🎁 Presentes
         "presente": "Presentes",
         "lembrancinha": "Presentes",
         "aniversário": "Presentes",
@@ -449,14 +398,14 @@ def definir_categoria(descricao: str):
         "amigo secreto": "Presentes",
         "mimo": "Presentes",
 
-        # ❤️ Doações (5 palavras-chave)
+        # ❤️ Doações
         "doação": "Doações",
         "vaquinha": "Doações",
         "ong": "Doações",
         "ajuda": "Doações",
         "solidariedade": "Doações",
 
-        # 💰 Finanças (10 palavras-chave)
+        # 💰 Finanças
         "investimento": "Finanças",
         "poupança": "Finanças",
         "cartão de crédito": "Finanças",
@@ -468,7 +417,7 @@ def definir_categoria(descricao: str):
         "aplicação": "Finanças",
         "corretora": "Finanças",
 
-        # ⚙️ Serviços (15 palavras-chave)
+        # ⚙️ Serviços
         "barbearia": "Serviços",
         "cabeleireiro": "Serviços",
         "manicure": "Serviços",
@@ -485,7 +434,7 @@ def definir_categoria(descricao: str):
         "costureira": "Serviços",
         "carpintaria": "Serviços",
 
-        # 📦 Assinaturas (10 palavras-chave)
+        # 📦 Assinaturas
         "revista": "Assinaturas",
         "jornal": "Assinaturas",
         "plano anual": "Assinaturas",
@@ -497,7 +446,7 @@ def definir_categoria(descricao: str):
         "newsletter paga": "Assinaturas",
         "finclass": "Assinaturas",
 
-        # 🐱 Pets (10 palavras-chave)
+        # 🐱 Pets
         "ração": "Pets",
         "petisco": "Pets",
         "veterinário": "Pets",
@@ -509,7 +458,7 @@ def definir_categoria(descricao: str):
         "brinquedo pet": "Pets",
         "remédio pet": "Pets",
 
-        # 🛠️ Hobby & DIY (8 palavras-chave)
+        # 🛠️ Hobby & DIY
         "ferramenta": "Hobby/DIY",
         "madeira": "Hobby/DIY",
         "tinta spray": "Hobby/DIY",
@@ -519,7 +468,7 @@ def definir_categoria(descricao: str):
         "tricot": "Hobby/DIY",
         "crochê": "Hobby/DIY",
 
-        # 🌱 Jardinagem (5 palavras-chave)
+        # 🌱 Jardinagem
         "mudas": "Jardinagem",
         "adubo": "Jardinagem",
         "fertilizante": "Jardinagem",
@@ -533,17 +482,20 @@ def definir_categoria(descricao: str):
             return categoria
     return "Outros"
 
+
 def salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas):
     """
     Salva o gasto no banco de dados PostgreSQL.
     """
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    
+
     for i in range(parcelas):
         data = datetime.datetime.now() + datetime.timedelta(days=30 * i)
-        cursor.execute("INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas, data) VALUES (%s, %s, %s, %s, %s, %s)", 
-                       (descricao, valor / parcelas, categoria, meio_pagamento, parcelas, data))
+        cursor.execute(
+            "INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas, data) VALUES (%s, %s, %s, %s, %s, %s)",
+            (descricao, valor / parcelas, categoria, meio_pagamento, parcelas, data)
+        )
 
     conn.commit()
     cursor.close()
@@ -595,3 +547,72 @@ def registrar_fatura_cartao(mensagem):
         return {"status": "💳 Fatura do cartão registrada com sucesso!"}
     except:
         return {"status": "❌ Erro ao registrar fatura"}
+
+def obter_cotacao_principais():
+    """
+    Obtém as cotações das 5 principais moedas (USD, EUR, GBP, BTC, ETH).
+    """
+    moedas = ["USD", "EUR", "GBP", "BTC", "ETH"]
+    url = f"{API_COTACAO}" + ",".join([f"{m}-BRL" for m in moedas])
+    print(f"📡 Buscando cotações na URL: {url}")
+
+    try:
+        response = requests.get(url)
+        data = response.json()
+        print("📊 Dados recebidos:", data)
+
+        cotacoes = []
+        for moeda in moedas:
+            key = f"{moeda}BRL"
+            if key in data:
+                valor = float(data[key]['bid'])
+                emoji = MOEDA_EMOJIS.get(moeda, "💰")
+                valor_formatado = f"R$ {format(valor, ',.2f').replace(',', '.')}"
+                cotacoes.append(f"{emoji} {moeda}: {valor_formatado}")
+
+        if not cotacoes:
+            return "⚠️ Nenhuma cotação encontrada. Verifique a API."
+
+        return "📈 Cotações principais:\n\n" + "\n".join(cotacoes)
+
+    except Exception as e:
+        print("❌ Erro ao buscar cotações:", str(e))  # Log de erro detalhado
+        return f"❌ Erro ao buscar cotações: {str(e)}"
+
+
+def obter_cotacao(moeda: str):
+    """
+    Obtém a cotação da moeda informada e retorna o nome da moeda.
+    """
+    moeda = moeda.upper()
+    nome_moeda = MOEDAS.get(moeda, "Moeda não encontrada")
+
+    try:
+        response = requests.get(f"https://economia.awesomeapi.com.br/json/last/{moeda}-BRL")
+        data = response.json()
+        key = f"{moeda}BRL"
+
+        if key in data:
+            valor = float(data[key]['bid'])
+            return f"💰 {nome_moeda} ({moeda}/BRL): R${valor:.2f}"
+        else:
+            return "⚠️ Moeda não encontrada. Use códigos como USD, EUR, BTC..."
+    except Exception as e:
+        return f"❌ Erro ao buscar cotação: {str(e)}"
+
+
+def enviar_mensagem_whatsapp(telefone, mensagem):
+    """
+    Envia uma mensagem via WhatsApp Web.js para o usuário correto.
+    """
+    payload = {
+        "number": telefone.replace("whatsapp:", "").replace("+", ""),
+        "message": mensagem
+    }
+
+    try:
+        response = requests.post(WHATSAPP_BOT_URL, json=payload)
+        response.raise_for_status()
+        return {"status": "Mensagem enviada"}
+    except requests.exceptions.RequestException as e:
+        return {"status": "Erro ao enviar mensagem", "error": str(e)}

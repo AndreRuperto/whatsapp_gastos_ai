@@ -92,16 +92,23 @@ client.initialize();
 app.post('/send', async (req, res) => {
     const { number, message } = req.body;
 
+    // Log para ver se a requisição chegou corretamente
+    console.log("POST /send chamado com body:", req.body);
+
     if (!number || !message) {
+        console.log("Body inválido:", req.body);
         return res.status(400).json({ error: 'Número e mensagem são obrigatórios!' });
     }
 
-    const formattedNumber = `${number}@c.us`; // Garante que está mandando para o usuário correto
+    const formattedNumber = `${number}@c.us`;
 
     try {
+        console.log(`Enviando mensagem para: ${formattedNumber} - Conteúdo: "${message}"`);
         await client.sendMessage(formattedNumber, message);
         res.json({ success: true, message: `Mensagem enviada para ${number}` });
     } catch (error) {
+        // Logamos o erro aqui, além do res.status(500):
+        console.error("Erro ao enviar mensagem:", error);
         res.status(500).json({ error: error.message });
     }
 });

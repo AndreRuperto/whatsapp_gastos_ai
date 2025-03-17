@@ -144,29 +144,29 @@ def processar_mensagem(mensagem: str):
         parcelas = 1
         descricao = ""
 
-        # Iterar sobre cada parte para encontrar valor
         for i, parte in enumerate(partes):
             logger.info("   - Verificando parte [%d]: '%s'", i, parte)
 
-            # Tenta identificar se a parte atual é um número (mesmo com ponto)
             if parte.replace(".", "").isdigit():
                 valor = float(parte)
                 logger.info("   -> Valor numérico encontrado: %.2f", valor)
 
-                # Verifica sintaxe de parcelamento (ex: "2 x 50")
-                if i >= 2 and partes[i - 1] == "x" and partes[i - 2].isdigit():
-                    parcelas = int(partes[i - 2])
-                    descricao = " ".join(partes[:i - 2])
+                # 📌 Detectando "10x" sem espaço
+                if i + 1 < len(partes) and partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
+                    parcelas = int(partes[i + 1][:-1])
+                    descricao = " ".join(partes[:i])
                     logger.info("   -> Parcelamento identificado: %dx. Descrição parcial: '%s'", parcelas, descricao)
+
+                    # 📌 Detectando meio de pagamento
+                    if i + 2 < len(partes) and partes[i + 2] in MEIOS_PAGAMENTO_VALIDOS:
+                        meio_pagamento = partes[i + 2]
+                        logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
                 else:
                     descricao = " ".join(partes[:i])
                     logger.info("   -> Descrição identificada sem parcelamento: '%s'", descricao)
 
-                # Verifica se o próximo elemento é meio de pagamento (pix, crédito, débito)
-                if i + 1 < len(partes):
-                    possivel_meio = partes[i + 1]
-                    if possivel_meio in MEIOS_PAGAMENTO_VALIDOS:
-                        meio_pagamento = possivel_meio
+                    if i + 1 < len(partes) and partes[i + 1] in MEIOS_PAGAMENTO_VALIDOS:
+                        meio_pagamento = partes[i + 1]
                         logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
 
                 break  # Interrompe o loop pois o valor já foi encontrado
@@ -175,7 +175,6 @@ def processar_mensagem(mensagem: str):
             logger.warning("⚠️ Nenhum valor encontrado na mensagem!")
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
-        # Define categoria
         categoria = definir_categoria(descricao)
         logger.info("   -> Categoria definida: '%s'", categoria)
 
@@ -185,9 +184,7 @@ def processar_mensagem(mensagem: str):
         logger.exception("❌ Erro ao processar mensagem:")
         return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
-
 MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
-
 
 def definir_categoria(descricao: str):
     """

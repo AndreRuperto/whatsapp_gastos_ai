@@ -611,19 +611,31 @@ def obter_cotacao(moeda: str):
 
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Telefone original recebido: %s", telefone)
+
     numero_limpo = telefone.replace("whatsapp:", "").replace("+", "")
+    logger.info("Após remover 'whatsapp:' e '+': %s", numero_limpo)
 
     # Se ainda terminar com '@c.us', removemos
     if numero_limpo.endswith("@c.us"):
+        logger.info("O número termina com '@c.us'. Removendo sufixo...")
         numero_limpo = numero_limpo[:-5]  # remove os últimos 5 caracteres
+    else:
+        logger.info("O número não termina com '@c.us'. Nada a remover.")
+
+    logger.info("Número final (limpo): %s", numero_limpo)
 
     payload = {
-        "number": numero_limpo,  # ex.: 556199570838
+        "number": numero_limpo,  # ex.: "556199570838"
         "message": mensagem
     }
+    logger.info("Payload final a ser enviado: %s", payload)
 
     try:
         response = requests.post(WHATSAPP_BOT_URL, json=payload)
+        logger.info("Resposta do POST status code: %d", response.status_code)
         response.raise_for_status()
         return {"status": "Mensagem enviada"}
     except requests.exceptions.RequestException as e:

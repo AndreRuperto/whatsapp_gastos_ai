@@ -196,22 +196,41 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
 
 def processar_mensagem(mensagem: str):
     """
-    Processa a mensagem recebida e tenta extrair os dados de um gasto.
+    Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.
     """
     try:
         partes = mensagem.split()
-        meio_pagamento = partes[-2] if partes[-2] in ["pix", "crédito", "débito"] else "Desconhecido"
-        valor = float(partes[-1])
-        descricao = " ".join(partes[:-2]) if meio_pagamento != "Desconhecido" else " ".join(partes[:-1])
-        categoria = definir_categoria(descricao)
-        parcelas = 1
+        
+        # Último elemento deve ser o valor (número)
+        try:
+            valor = float(partes[-1])  # Tenta converter o último item em float
+        except ValueError:
+            return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
+        # Penúltimo elemento pode ser meio de pagamento
+        if partes[-2].lower() in ["pix", "crédito", "débito"]:
+            meio_pagamento = partes[-2].lower()
+            descricao = " ".join(partes[:-2])  # Descrição exclui valor e meio de pagamento
+        else:
+            meio_pagamento = "Desconhecido"
+            descricao = " ".join(partes[:-1])  # Descrição exclui apenas o valor
+        
+        # Definir a categoria com base na descrição
+        categoria = definir_categoria(descricao)
+
+        # Verifica se há parcelamento (ex: "10x cartão")
+        parcelas = 1
         if meio_pagamento == "crédito" and "x" in descricao:
             descricao, parcelas = descricao.rsplit(" ", 1)
-            parcelas = int(parcelas.replace("x", ""))
+            try:
+                parcelas = int(parcelas.replace("x", ""))
+            except ValueError:
+                parcelas = 1  # Se der erro, assume 1 parcela
 
-        return descricao, valor, categoria, meio_pagamento, parcelas
-    except Exception:
+        return descricao.strip(), valor, categoria, meio_pagamento, parcelas
+
+    except Exception as e:
+        print(f"❌ Erro ao processar mensagem: {str(e)}")
         return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
 

@@ -194,6 +194,8 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
     except requests.exceptions.RequestException as e:
         return {"status": "Erro ao enviar mensagem", "error": str(e)}
 
+MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
+
 def processar_mensagem(mensagem: str):
     """
     Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.

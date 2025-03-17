@@ -199,33 +199,35 @@ def processar_mensagem(mensagem: str):
     Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.
     """
     try:
-        partes = mensagem.split()
+        partes = mensagem.lower().split()
+        valor = 0.0
+        meio_pagamento = "Desconhecido"
+        parcelas = 1
+        descricao = ""
         
-        # Último elemento deve ser o valor (número)
-        try:
-            valor = float(partes[-1])  # Tenta converter o último item em float
-        except ValueError:
+        # Verifica se há um valor numérico e meio de pagamento
+        for i, parte in enumerate(partes):
+            if parte.replace(".", "").isdigit():  # Verifica se é um número
+                valor = float(parte)
+                
+                # Se o elemento anterior for "x" e o antepenúltimo for um número, é parcelamento
+                if i >= 2 and partes[i - 1] == "x" and partes[i - 2].isdigit():
+                    parcelas = int(partes[i - 2])
+                    descricao = " ".join(partes[:i - 2])
+                else:
+                    descricao = " ".join(partes[:i])
+                
+                # Verifica se o próximo elemento é um meio de pagamento
+                if i + 1 < len(partes) and partes[i + 1] in MEIOS_PAGAMENTO_VALIDOS:
+                    meio_pagamento = partes[i + 1]
+                break
+        
+        # Se não encontrou um valor, retorna erro
+        if valor == 0.0:
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
-
-        # Penúltimo elemento pode ser meio de pagamento
-        if partes[-2].lower() in ["pix", "crédito", "débito"]:
-            meio_pagamento = partes[-2].lower()
-            descricao = " ".join(partes[:-2])  # Descrição exclui valor e meio de pagamento
-        else:
-            meio_pagamento = "Desconhecido"
-            descricao = " ".join(partes[:-1])  # Descrição exclui apenas o valor
         
         # Definir a categoria com base na descrição
         categoria = definir_categoria(descricao)
-
-        # Verifica se há parcelamento (ex: "10x cartão")
-        parcelas = 1
-        if meio_pagamento == "crédito" and "x" in descricao:
-            descricao, parcelas = descricao.rsplit(" ", 1)
-            try:
-                parcelas = int(parcelas.replace("x", ""))
-            except ValueError:
-                parcelas = 1  # Se der erro, assume 1 parcela
 
         return descricao.strip(), valor, categoria, meio_pagamento, parcelas
 

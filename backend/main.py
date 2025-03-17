@@ -611,11 +611,14 @@ def obter_cotacao(moeda: str):
 
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
-    """
-    Envia uma mensagem via WhatsApp Web.js para o usuário correto.
-    """
+    numero_limpo = telefone.replace("whatsapp:", "").replace("+", "")
+
+    # Se ainda terminar com '@c.us', removemos
+    if numero_limpo.endswith("@c.us"):
+        numero_limpo = numero_limpo[:-5]  # remove os últimos 5 caracteres
+
     payload = {
-        "number": telefone.replace("whatsapp:", "").replace("+", ""),
+        "number": numero_limpo,  # ex.: 556199570838
         "message": mensagem
     }
 

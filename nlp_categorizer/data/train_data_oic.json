@@ -1,0 +1,2182 @@
+[
+    {
+        "text": "Almocei em um restaurante perto do trabalho",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Jantar em família no restaurante",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Lanche rápido na cafeteria",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Pizza delivery à noite",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Café da manhã na padaria",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Sanduíche no intervalo da faculdade",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Almoço executivo na praça de alimentação",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Pastel e caldo de cana na feira",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Hambúrguer artesanal na lanchonete",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Sorvete de sobremesa após almoço",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Pizza no final de semana",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Sushi com amigos à noite",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Churrasco de domingo em casa",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Jantar italiano com vinho",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Feijoada tradicional no sábado",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Refeição rápida no food truck",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Crepe doce após cinema",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Brunch especial de domingo",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Rodízio de comida japonesa",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Almoço saudável com salada",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Comida mexicana no restaurante",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Doces artesanais da confeitaria",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Açaí no fim da tarde",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Massas italianas no almoço",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Frango assado de domingo",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Lasanha caseira",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Jantar vegetariano no centro",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Bolo e café à tarde",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Hambúrguer com amigos após jogo",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Comida chinesa para jantar",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Batata frita e refrigerante",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Salgado na lanchonete",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Pipoca no cinema",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Empanada argentina na rua",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Risoto em restaurante gourmet",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Jantar árabe com esfihas",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Comida caseira da vovó",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Chá da tarde com biscoitos",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Sanduíche natural após academia",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Bolo de aniversário",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Comida indiana à noite",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Tapioca no café da manhã",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Almoço vegano",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Milkshake depois do trabalho",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Frutos do mar no litoral",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Coxinha e pastel de lanche",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Macarronada em casa",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Mousse de chocolate",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Panqueca americana de manhã",
+        "intent": "Alimentação"
+    },
+    {
+        "text": "Abasteci o carro no posto",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Uber para o trabalho",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Comprei passagem de ônibus",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Troca de óleo do carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Bilhete mensal do metrô",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Passagem aérea para São Paulo",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Manutenção preventiva do carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de pneu novo",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Lavagem completa do carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Corrida de táxi",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Seguro automotivo mensal",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Aluguel de carro para viagem",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Estacionamento mensal",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Pedágio para viagem",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Revisão periódica do carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Bicicleta nova para deslocamento",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Corrida de aplicativo após festa",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Reparos no motor do carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Passe mensal para trem",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Viagem de ônibus para o interior",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Combustível para viagem longa",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de peças automotivas",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Reboque emergencial",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Assinatura mensal de estacionamento",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Viagem de trem para outra cidade",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Combustível semanal",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Transporte escolar mensal",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Pagamento de multa de trânsito",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Aluguel de patinete elétrico",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de capacete para moto",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Manutenção da moto",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Recarga de cartão de transporte público",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Viagem compartilhada de carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Seguro para viagem internacional",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Combustível para moto",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de óleo lubrificante",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Manutenção de bicicleta",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de acessórios para carro",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Passe de ônibus semanal",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Lavagem de moto",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de GPS para veículo",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Pagamento de estacionamento diário",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Viagem curta de avião",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Instalação de som automotivo",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Manutenção de freios",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Compra de passagem marítima",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Reparação de pneu furado",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Locação de van para transporte de grupo",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Translado do aeroporto",
+        "intent": "Transporte"
+    },
+    {
+        "text": "Consulta médica de rotina",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Exames laboratoriais",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Compra de remédios na farmácia",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Plano de saúde mensal",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Consulta odontológica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento fisioterapêutico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Vacina contra gripe",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Exame oftalmológico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Cirurgia pequena ambulatorial",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Atendimento hospitalar de emergência",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Compra de lentes de contato",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Sessão com psicólogo",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Sessão de terapia ocupacional",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Check-up anual",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento dermatológico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Compra de vitaminas",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Academia mensal",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Exame de imagem (raio-x)",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento dentário estético",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Remédio para tratamento contínuo",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Massagem terapêutica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Consulta com nutricionista",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Aparelho ortodôntico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Exame cardiológico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Vacinação infantil",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Compra de óculos de grau",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento ortopédico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Internação hospitalar breve",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Sessão de acupuntura",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento homeopático",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Consulta geriátrica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Consulta pediátrica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Compra de termômetro digital",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Aparelho auditivo",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento de alergia",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Consulta ginecológica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Exame neurológico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Exame de sangue específico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Medicamento manipulado",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Terapia psicológica em grupo",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento de varizes",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento capilar especializado",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Cirurgia odontológica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Consulta reumatológica",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Compra de equipamento ortopédico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Sessão de hidroterapia",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Check-up cardiológico",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Tratamento para insônia",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Sessão de quiropraxia",
+        "intent": "Saúde"
+    },
+    {
+        "text": "Fui ao cinema com amigos",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Parque aquático no fim de semana",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio no zoológico",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Joguei boliche com amigos",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Assisti peça de teatro",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Ida ao parque de diversões",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Show de música ao vivo",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Festival gastronômico",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Viagem para a praia",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Participação em corrida de rua",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Compra de ingressos para show",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Tour por museu de arte",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Visita ao jardim botânico",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Jogos em arcade",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio de barco",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Paintball com colegas",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Escape room com amigos",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Parque temático de aventura",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Acampamento no final de semana",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio em roda gigante",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Festival de cinema",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Exposição fotográfica",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Viagem turística pela cidade",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Assistir jogo no estádio",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Participação em oficina de artesanato",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Feira de livros",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Tour vinícola",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Jogos de tabuleiro com amigos",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio em cachoeira",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Visita a exposição de carros antigos",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Participação em trilha ecológica",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Festival de cerveja artesanal",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Dia no spa para relaxar",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Visita ao aquário da cidade",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio a cavalo",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Viagem para região serrana",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Concerto de música clássica",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Ida ao planetário",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Festival cultural local",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio em jardim japonês",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Assistir espetáculo de dança",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Tour guiado em ponto turístico",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Ida à praia com amigos",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio de bicicleta no parque",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Visita a parque nacional",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Festival de jazz",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Visita a reserva ecológica",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Passeio em parque urbano",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Atividade de escalada indoor",
+        "intent": "Lazer"
+    },
+    {
+        "text": "Compras semanais no supermercado",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compras mensais no mercado",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Feira de hortifruti",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de limpeza do mercado",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra mensal de carnes",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos congelados",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Abastecimento de itens básicos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Doces e sobremesas do mercado",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de bebidas para festa",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Frutas frescas semanais",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Verduras e legumes frescos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos lácteos semanais",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de higiene pessoal",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de itens de padaria",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra semanal de cereais",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Abastecimento de alimentos não perecíveis",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Sorvetes e picolés",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Petiscos e snacks",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Material descartável",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos orgânicos semanais",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de ovos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de alimentos diet",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Itens para churrasco",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de temperos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Itens para café da manhã",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de limpeza pesada",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de carnes para churrasco",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Reposição de papel higiênico",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Água mineral e refrigerantes",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de alimentos veganos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Itens para lanche escolar",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de produtos importados",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de panificação",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Reposição de congelados",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de peixes e frutos do mar",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Reposição de grãos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de confeitaria",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Material para limpeza doméstica",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Itens para preparo de sobremesas",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de vinhos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Abastecimento de itens para pets",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de café",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de jardinagem",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos naturais",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Itens para dieta especial",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Alimentos congelados prontos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Produtos de higiene infantil",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de suplementos alimentares",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Compra de massas e molhos",
+        "intent": "Supermercado"
+    },
+    {
+        "text": "Pagamento da mensalidade escolar",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de livros acadêmicos",
+        "intent": "Educação"
+    },
+    {
+        "text": "Inscrição em curso online",
+        "intent": "Educação"
+    },
+    {
+        "text": "Material escolar comprado",
+        "intent": "Educação"
+    },
+    {
+        "text": "Matrícula em curso presencial",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de mochila nova",
+        "intent": "Educação"
+    },
+    {
+        "text": "Mensalidade da faculdade",
+        "intent": "Educação"
+    },
+    {
+        "text": "Aula particular de matemática",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso preparatório para concurso",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de cadernos e canetas",
+        "intent": "Educação"
+    },
+    {
+        "text": "Workshop profissionalizante",
+        "intent": "Educação"
+    },
+    {
+        "text": "Aula de idiomas mensal",
+        "intent": "Educação"
+    },
+    {
+        "text": "Seminário acadêmico pago",
+        "intent": "Educação"
+    },
+    {
+        "text": "Licença para software educacional",
+        "intent": "Educação"
+    },
+    {
+        "text": "Inscrição em vestibular",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de programação",
+        "intent": "Educação"
+    },
+    {
+        "text": "Material didático para curso",
+        "intent": "Educação"
+    },
+    {
+        "text": "Mensalidade de curso técnico",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de uniforme escolar",
+        "intent": "Educação"
+    },
+    {
+        "text": "Taxa para prova de certificação",
+        "intent": "Educação"
+    },
+    {
+        "text": "Aula online de reforço",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de idiomas intensivo",
+        "intent": "Educação"
+    },
+    {
+        "text": "Material para curso de artes",
+        "intent": "Educação"
+    },
+    {
+        "text": "Inscrição em simpósio acadêmico",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de especialização online",
+        "intent": "Educação"
+    },
+    {
+        "text": "Mensalidade de escola infantil",
+        "intent": "Educação"
+    },
+    {
+        "text": "Material para laboratório",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso rápido de finanças pessoais",
+        "intent": "Educação"
+    },
+    {
+        "text": "Assinatura de plataforma de ensino",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de apostila para concurso",
+        "intent": "Educação"
+    },
+    {
+        "text": "Mensalidade do curso de inglês",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de marketing digital",
+        "intent": "Educação"
+    },
+    {
+        "text": "Taxa de matrícula na pós-graduação",
+        "intent": "Educação"
+    },
+    {
+        "text": "Mensalidade curso de dança",
+        "intent": "Educação"
+    },
+    {
+        "text": "Material para curso de música",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de fotografia",
+        "intent": "Educação"
+    },
+    {
+        "text": "Aula particular de inglês",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso preparatório para ENEM",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de notebook para estudos",
+        "intent": "Educação"
+    },
+    {
+        "text": "Taxa de inscrição em workshop",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de desenvolvimento pessoal",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de livros técnicos",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de culinária",
+        "intent": "Educação"
+    },
+    {
+        "text": "Mensalidade curso profissionalizante",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de gestão financeira",
+        "intent": "Educação"
+    },
+    {
+        "text": "Compra de tablet para aulas",
+        "intent": "Educação"
+    },
+    {
+        "text": "Curso de informática básica",
+        "intent": "Educação"
+    },
+    {
+        "text": "Aula de reforço escolar semanal",
+        "intent": "Educação"
+    },
+    {
+        "text": "Material para curso de desenho",
+        "intent": "Educação"
+    },
+    {
+        "text": "Pagamento do aluguel mensal",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Conta de energia elétrica",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Conta de água",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Conta de gás encanado",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Taxa de condomínio",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Reparos hidráulicos no banheiro",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de móveis novos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Reforma da cozinha",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Instalação de ar-condicionado",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de geladeira nova",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Manutenção do elevador do prédio",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Decoração para o apartamento",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Dedetização do imóvel",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de utensílios domésticos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Limpeza e higienização de sofá",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de colchão novo",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Conserto da máquina de lavar",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Pintura interna do imóvel",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Seguro residencial anual",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Reparos elétricos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Instalação de sistema de segurança",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de cortinas e persianas",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Pagamento do IPTU",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Manutenção do jardim",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de materiais para reforma",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Instalação de internet residencial",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Conserto do chuveiro",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de máquina de lavar roupas",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Taxa de coleta de lixo",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Instalação de gás natural",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Limpeza profissional do apartamento",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de tapetes e carpetes",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Reparação do telhado",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de ventiladores",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Conserto de portas e janelas",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de armários planejados",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Manutenção da piscina",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Serviço de jardinagem",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de lâmpadas LED",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Pagamento do financiamento imobiliário",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Troca de torneiras e encanamentos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de eletrodomésticos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Pagamento de diarista semanal",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Aquisição de quadros decorativos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de roupa de cama",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Instalação de antena de TV",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Troca de pisos e revestimentos",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Compra de churrasqueira para varanda",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Instalação de energia solar residencial",
+        "intent": "Moradia"
+    },
+    {
+        "text": "Comprei uma camiseta nova na loja",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Adquiri um vestido para festa",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Compra de sapatos novos",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Renovei o guarda-roupa com calças jeans",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Comprei jaqueta para o inverno",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Meias novas para academia",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Vestido casual para o verão",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Comprei shorts para praia",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Sapatos sociais para trabalho",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Camisa social nova",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa esportiva para corrida",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Boné novo para proteção solar",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Casaco pesado para viagem",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Cuecas novas",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa íntima feminina",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Terno para evento formal",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Saia longa para passeio",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Biquíni novo",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Camisa polo",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Calça de moletom confortável",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa para prática de yoga",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Casaco impermeável para chuva",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Sandálias para uso diário",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Chapéu para praia",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Pijama novo",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa infantil para presente",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Gravata para casamento",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Cachecol para o frio",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Luva térmica",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Blusa de tricô",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Meia-calça nova",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Sapato esportivo para academia",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa social para reunião",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Short esportivo",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Camisa de time",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Vestido elegante para jantar",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Mochila nova para escola",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa de cama nova",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Toalha de banho nova",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupão confortável",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Vestido de festa infantil",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Sapato de salto para evento",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Chinelo para uso doméstico",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Calça cargo para trabalho",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Blazer casual",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Vestido de noiva",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Roupa de festa junina",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Gorro para inverno",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Sapato casual para passeio",
+        "intent": "Roupas"
+    },
+    {
+        "text": "Compra de novo smartphone",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Notebook para trabalho",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Fones de ouvido sem fio",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Mouse ergonômico",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Teclado mecânico",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Monitor ultrawide",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Compra de tablet novo",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Smartwatch esportivo",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Câmera digital para viagem",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Cartão de memória de alta capacidade",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Roteador Wi-Fi de última geração",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Power bank portátil",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Assistente virtual doméstico",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Smart TV de 50 polegadas",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Alto-falante Bluetooth",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Console de videogame novo",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Controle adicional para videogame",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Impressora multifuncional",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Cabo HDMI novo",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Projetor portátil",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Drone para fotografia aérea",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Aquisição de webcam HD",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Compra de carregador rápido",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Leitor de e-books",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Caixa de som inteligente",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Suporte articulado para TV",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Lâmpadas inteligentes",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Compra de câmera de segurança",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Aspirador de pó robô",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Placa de vídeo para computador",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Adaptador USB",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Hub USB com múltiplas portas",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Monitor gamer",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "SSD para upgrade no computador",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Microfone para podcast",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Webcam para reuniões remotas",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Filtro de linha com proteção",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Aquisição de headset gamer",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Pen drive com grande capacidade",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Ventilador USB portátil",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Mesa digitalizadora",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Teclado Bluetooth portátil",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Compra de nobreak",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Fita LED para decoração",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Receptor Bluetooth",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Suporte ergonômico para notebook",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Compra de ar condicionado portátil",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Despertador digital",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Sistema de som para casa",
+        "intent": "Eletrônicos"
+    },
+    {
+        "text": "Pagamento da conta de energia elétrica",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da conta de água",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da fatura do cartão de crédito",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Conta mensal da internet",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento do plano de celular",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Mensalidade da Netflix",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação da assinatura do Spotify",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Taxa mensal do condomínio",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da conta de gás",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação do seguro residencial",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento do IPTU",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Assinatura mensal do jornal",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Taxa anual do cartão de crédito",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do clube",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação da assinatura da Amazon Prime",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da fatura da TV a cabo",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento do plano de saúde",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Recarga mensal do pré-pago do celular",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da taxa de limpeza urbana",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do estacionamento",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Assinatura mensal de revista digital",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade da academia",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento do serviço de segurança residencial",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da conta de telefone fixo",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade escolar",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Taxa anual do seguro do carro",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do curso online",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação da assinatura do serviço de armazenamento em nuvem",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento de tarifas bancárias mensais",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do aplicativo de streaming de música",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação da assinatura de software",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da taxa de manutenção de conta corrente",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Assinatura anual do antivírus",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento do plano odontológico",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento mensal do seguro de vida",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento de serviço de faxina mensal",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento mensal de empréstimo consignado",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação da assinatura de serviço de notícias",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do coworking",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do serviço de entregas",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da taxa de serviço de correio expresso",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento mensal de serviços de consultoria financeira",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação da assinatura de serviços jurídicos",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento mensal do seguro pet",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento mensal de aplicativo de meditação",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Renovação de assinatura de streaming de esportes",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do curso de idiomas",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da taxa de manutenção de cartão pré-pago",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Pagamento da mensalidade do serviço de apoio psicológico online",
+        "intent": "Contas e Serviços"
+    },
+    {
+        "text": "Comprei um presente para aniversário",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Adquiri uma lembrancinha para festa",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Presente de casamento comprado",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Mimo para amigo secreto",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Encomendei um mimo especial",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Presente para casamento dos amigos",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Comprei uma lembrancinha personalizada",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Gastei com presente de Natal",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Presente do amigo secreto da empresa",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Mimo para minha namorada",
+        "intent": "Presentes"
+    },
+    {
+        "text": "Fiz uma doação para caridade",
+        "intent": "Doações"
+    },
+    {
+        "text": "Participei de uma campanha solidária",
+        "intent": "Doações"
+    },
+    {
+        "text": "Doei roupas antigas",
+        "intent": "Doações"
+    },
+    {
+        "text": "Ajudei um projeto social",
+        "intent": "Doações"
+    },
+    {
+        "text": "Contribuí com uma ONG",
+        "intent": "Doações"
+    },
+    {
+        "text": "Paguei a fatura do cartão de crédito",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Investi dinheiro na bolsa",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Depositei na poupança",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Paguei juros de empréstimo",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Renovei seguro do carro",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Financiamento da casa",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Solicitei um empréstimo pessoal",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Transferência para poupança",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Apliquei dinheiro em investimentos",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Pagamento anual do consórcio",
+        "intent": "Finanças"
+    },
+    {
+        "text": "Corte de cabelo no salão",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Manicure semanal",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Chamei um eletricista para reparos",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Contratei fotógrafo profissional",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Serviço de encanamento na casa",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Paguei manicure semanal",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Freelancer para meu projeto",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Faxina mensal contratada",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Serviço de pintura residencial",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Contratação de consultoria técnica",
+        "intent": "Serviços"
+    },
+    {
+        "text": "Assinei revista semanal",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Renovação de jornal mensal",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Pagamento da mensalidade do clube",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Assinatura de streaming anual",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Patreon do criador favorito",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Renovação anual da revista",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Plano anual de academia",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Pagamento mensal do aplicativo",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Assinatura de plataforma de cursos",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Mensalidade do streaming",
+        "intent": "Assinaturas"
+    },
+    {
+        "text": "Comprei ração para cachorro",
+        "intent": "Pets"
+    },
+    {
+        "text": "Visita ao veterinário",
+        "intent": "Pets"
+    },
+    {
+        "text": "Vacina anual do gato",
+        "intent": "Pets"
+    },
+    {
+        "text": "Casinha nova para pet",
+        "intent": "Pets"
+    },
+    {
+        "text": "Areia higiênica para gatos",
+        "intent": "Pets"
+    },
+    {
+        "text": "Petisco para cães",
+        "intent": "Pets"
+    },
+    {
+        "text": "Banho e tosa para cachorro",
+        "intent": "Pets"
+    },
+    {
+        "text": "Coleira nova para gato",
+        "intent": "Pets"
+    },
+    {
+        "text": "Compra de brinquedo para pet",
+        "intent": "Pets"
+    },
+    {
+        "text": "Areia sanitária para gato",
+        "intent": "Pets"
+    }
+]

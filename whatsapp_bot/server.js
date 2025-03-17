@@ -63,8 +63,17 @@ client.on('message', async msg => {
             body: `Body=${encodeURIComponent(msg.body)}&From=whatsapp:${msg.from}`
         });
 
-        const json = await response.json();
-        console.log("📡 Resposta da API:", json);
+        // Captura a resposta bruta antes de tentar converter para JSON
+        const textResponse = await response.text();
+        console.log("📡 Resposta bruta da API:", textResponse);
+
+        // Se a resposta não começar com '{', significa que não é JSON válido
+        if (!textResponse.trim().startsWith("{")) {
+            throw new Error("🚨 A resposta da API não está em JSON!");
+        }
+
+        const json = JSON.parse(textResponse);
+        console.log("📡 Resposta JSON da API:", json);
 
         if (json.resposta) {
             await client.sendMessage(msg.from, json.resposta);

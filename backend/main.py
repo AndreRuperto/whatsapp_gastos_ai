@@ -129,7 +129,6 @@ async def receber_mensagem(
     enviar_mensagem_whatsapp(telefone, resposta)
     return {"status": "OK", "resposta": resposta}
 
-
 def processar_mensagem(mensagem: str):
     """
     Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.
@@ -151,23 +150,19 @@ def processar_mensagem(mensagem: str):
                 valor = float(parte)
                 logger.info("   -> Valor numérico encontrado: %.2f", valor)
 
-                # 📌 Detectando "10x" sem espaço
-                if i + 1 < len(partes) and partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
-                    parcelas = int(partes[i + 1][:-1])
-                    descricao = " ".join(partes[:i])
-                    logger.info("   -> Parcelamento identificado: %dx. Descrição parcial: '%s'", parcelas, descricao)
+                # 📌 Detectando parcelamento mesmo que ele venha depois
+                if i + 1 < len(partes):
+                    if partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
+                        parcelas = int(partes[i + 1][:-1])
+                        logger.info("   -> Parcelamento identificado: %dx", parcelas)
 
-                    # 📌 Detectando meio de pagamento
-                    if i + 2 < len(partes) and partes[i + 2] in MEIOS_PAGAMENTO_VALIDOS:
-                        meio_pagamento = partes[i + 2]
-                        logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
-                else:
-                    descricao = " ".join(partes[:i])
-                    logger.info("   -> Descrição identificada sem parcelamento: '%s'", descricao)
+                descricao = " ".join(partes[:i])
+                logger.info("   -> Descrição identificada: '%s'", descricao)
 
-                    if i + 1 < len(partes) and partes[i + 1] in MEIOS_PAGAMENTO_VALIDOS:
-                        meio_pagamento = partes[i + 1]
-                        logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
+                # 📌 Detectando meio de pagamento
+                if i + 2 < len(partes) and partes[i + 2] in MEIOS_PAGAMENTO_VALIDOS:
+                    meio_pagamento = partes[i + 2]
+                    logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
 
                 break  # Interrompe o loop pois o valor já foi encontrado
 

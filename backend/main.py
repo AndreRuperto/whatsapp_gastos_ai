@@ -108,7 +108,7 @@ async def receber_mensagem(
         return {"status": "OK", "resposta": resposta}
 
     # 📌 Processamento de GASTOS
-    logger.info("🔍 Tentando processar mensagem como gasto...")
+    logger.info("🔍 Tentando processar mensagem como gasto... OK?")
 
     descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
 

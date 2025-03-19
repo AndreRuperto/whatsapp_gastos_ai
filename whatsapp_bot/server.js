@@ -77,9 +77,6 @@ client.initialize();
 app.post('/send', async (req, res) => {
     let { number, message } = req.body;
 
-    // Log para depuração
-    console.log("📩 POST /send chamado com body:", req.body);
-
     if (!number || !message) {
         console.log("⚠️ Body inválido:", req.body);
         return res.status(400).json({ error: 'Número e mensagem são obrigatórios!' });
@@ -89,9 +86,7 @@ app.post('/send', async (req, res) => {
     if (!number.endsWith("@c.us")) {
         number = `${number}@c.us`;
     }
-
-    console.log(`📡 Enviando mensagem para: ${number} - Conteúdo: "${message}"`);
-
+    
     try {
         await client.sendMessage(number, message);
         res.json({ success: true, message: `✅ Mensagem enviada para ${number}` });

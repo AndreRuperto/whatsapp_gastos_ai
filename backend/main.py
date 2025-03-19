@@ -152,17 +152,20 @@ def processar_mensagem(mensagem: str):
 
                 # 📌 Detectando parcelamento mesmo que ele venha depois
                 if i + 1 < len(partes):
+                    logger.info("   📌 Verificando possível parcelamento em: '%s'", partes[i + 1])
                     if partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
                         parcelas = int(partes[i + 1][:-1])
-                        logger.info("   -> Parcelamento identificado: %dx", parcelas)
+                        logger.info("   ✅ Parcelamento identificado: %dx", parcelas)
 
                 descricao = " ".join(partes[:i])
                 logger.info("   -> Descrição identificada: '%s'", descricao)
 
                 # 📌 Detectando meio de pagamento
-                if i + 2 < len(partes) and partes[i + 2] in MEIOS_PAGAMENTO_VALIDOS:
-                    meio_pagamento = partes[i + 2]
-                    logger.info("   -> Meio de pagamento identificado: '%s'", meio_pagamento)
+                if i + 2 < len(partes):
+                    logger.info("   📌 Verificando possível meio de pagamento em: '%s'", partes[i + 2])
+                    if partes[i + 2] in MEIOS_PAGAMENTO_VALIDOS:
+                        meio_pagamento = partes[i + 2]
+                        logger.info("   ✅ Meio de pagamento identificado: '%s'", meio_pagamento)
 
                 break  # Interrompe o loop pois o valor já foi encontrado
 

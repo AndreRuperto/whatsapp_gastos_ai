@@ -130,7 +130,7 @@ async def receber_mensagem(
     return {"status": "OK", "resposta": resposta}
 
 def processar_mensagem(mensagem: str):
-   """
+    """
     Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.
     Inclui logs detalhados para entender cada etapa do parsing.
     """

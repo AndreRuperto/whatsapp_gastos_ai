@@ -6,6 +6,11 @@ import datetime
 import requests
 from dotenv import load_dotenv
 import json
+from backend.services.scheduler import scheduler
+
+from backend.services.gastos_service import (
+    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario
+)
 
 # Configuração básica de logging
 logging.basicConfig(level=logging.INFO)
@@ -16,50 +21,14 @@ load_dotenv()
 
 app = FastAPI()
 
-# Configuração do Banco de Dados PostgreSQL
 DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL)
-cursor = conn.cursor()
-
-# Criar tabelas caso não existam
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS gastos (
-        id SERIAL PRIMARY KEY,
-        descricao TEXT,
-        valor REAL,
-        categoria TEXT,
-        meio_pagamento TEXT,
-        parcelas INT DEFAULT 1,
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS salario (
-        id SERIAL PRIMARY KEY,
-        valor REAL,
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS fatura_cartao (
-        id SERIAL PRIMARY KEY,
-        valor REAL,
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
-conn.commit()
-cursor.close()
-conn.close()
-
-# URL do WhatsApp Bot (Servidor Node.js)
 WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
-API_COTACAO = os.getenv("API_COTACAO", "https://economia.awesomeapi.com.br/json/last/")
+API_COTACAO = os.getenv("API_COTACAO")
 
 with open("backend/data/moedas.json", "r", encoding="utf-8") as file:
     dados_moedas = json.load(file)
 
 MOEDAS = dados_moedas.get("moedas_disponiveis", {})
-
 MOEDA_EMOJIS = {
     "USD": "🇺🇸",
     "EUR": "🇺🇳",
@@ -67,13 +36,11 @@ MOEDA_EMOJIS = {
     "BTC": "🪙",
     "ETH": "💎"
 }
-
+MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 @app.post("/webhook")
-async def receber_mensagem(
-    Body: str = Form(...),
-    From: str = Form(...)
-):
+async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
     mensagem = Body.strip()
     telefone = From.replace("whatsapp:", "").replace("+", "")
 
@@ -91,10 +58,11 @@ async def receber_mensagem(
         enviar_mensagem_whatsapp(telefone, status["status"])
         return status
 
-    if "fatura" in mensagem.lower():
-        status = registrar_fatura_cartao(mensagem)
-        enviar_mensagem_whatsapp(telefone, status["status"])
-        return status
+    if mensagem.lower() == "fatura paga!":
+        pagar_fatura()
+        resposta = "✅ Todas as compras parceladas deste mês foram removidas da fatura!"
+        enviar_mensagem_whatsapp(telefone, resposta)
+        return {"status": "OK", "resposta": resposta}
 
     if mensagem.lower() == "cotação":
         resposta = obter_cotacao_principais()
@@ -108,7 +76,7 @@ async def receber_mensagem(
         return {"status": "OK", "resposta": resposta}
 
     # 📌 Processamento de GASTOS
-    logger.info("🔍 Tentando processar mensagem como gasto... OK?")
+    logger.info("🔍 Tentando processar mensagem como gasto...")
 
     descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
 
@@ -123,9 +91,14 @@ async def receber_mensagem(
         descricao, valor, categoria, meio_pagamento, parcelas
     )
 
-    salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
+    # Se for pagamento no crédito e parcelado, salva na tabela `fatura_cartao`
+    if meio_pagamento == "crédito" and parcelas > 1:
+        salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
+        resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
+    else:
+        salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
+        resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
 
-    resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
     enviar_mensagem_whatsapp(telefone, resposta)
     return {"status": "OK", "resposta": resposta}
 
@@ -182,8 +155,6 @@ def processar_mensagem(mensagem: str):
     except Exception as e:
         logger.exception("❌ Erro ao processar mensagem:")
         return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
-
-MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
 
 def definir_categoria(descricao: str):
     """
@@ -482,129 +453,6 @@ def definir_categoria(descricao: str):
         if chave in descricao.lower():
             return cat
     return "Outros"
-
-
-def salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas):
-    """
-    Salva o gasto no banco de dados PostgreSQL.
-    """
-    conn = psycopg2.connect(DATABASE_URL)
-    cursor = conn.cursor()
-
-    for i in range(parcelas):
-        data = datetime.datetime.now() + datetime.timedelta(days=30 * i)
-        cursor.execute(
-            "INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas, data) VALUES (%s, %s, %s, %s, %s, %s)",
-            (descricao, valor / parcelas, categoria, meio_pagamento, parcelas, data)
-        )
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-
-def calcular_total_gasto():
-    """
-    Calcula o total gasto no mês atual.
-    """
-    conn = psycopg2.connect(DATABASE_URL)
-    cursor = conn.cursor()
-    cursor.execute("SELECT SUM(valor) FROM gastos WHERE data >= date_trunc('month', CURRENT_DATE)")
-    total = cursor.fetchone()[0] or 0.0
-    cursor.close()
-    conn.close()
-    return total
-
-
-def registrar_salario(mensagem):
-    """
-    Registra um novo salário no banco de dados.
-    """
-    try:
-        valor = float(mensagem.split()[-1])
-        conn = psycopg2.connect(DATABASE_URL)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO salario (valor) VALUES (%s)", (valor,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return {"status": "💰 Salário registrado com sucesso!"}
-    except:
-        logger.exception("❌ Erro ao registrar salário:")
-        return {"status": "❌ Erro ao registrar salário"}
-
-
-def registrar_fatura_cartao(mensagem):
-    """
-    Registra o valor da fatura do cartão.
-    """
-    try:
-        valor = float(mensagem.split()[-1])
-        conn = psycopg2.connect(DATABASE_URL)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO fatura_cartao (valor) VALUES (%s)", (valor,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return {"status": "💳 Fatura do cartão registrada com sucesso!"}
-    except:
-        logger.exception("❌ Erro ao registrar fatura:")
-        return {"status": "❌ Erro ao registrar fatura"}
-
-
-def obter_cotacao_principais():
-    """
-    Obtém as cotações das 5 principais moedas (USD, EUR, GBP, BTC, ETH).
-    """
-    moedas = ["USD", "EUR", "GBP", "BTC", "ETH"]
-    url = f"{API_COTACAO}" + ",".join([f"{m}-BRL" for m in moedas])
-    logger.info("📡 Buscando cotações na URL: %s", url)
-
-    try:
-        response = requests.get(url)
-        data = response.json()
-        logger.info("📊 Dados recebidos: %s", data)
-
-        cotacoes = []
-        for moeda in moedas:
-            key = f"{moeda}BRL"
-            if key in data:
-                valor = float(data[key]['bid'])
-                emoji = MOEDA_EMOJIS.get(moeda, "💰")
-                valor_formatado = f"R$ {format(valor, ',.2f').replace(',', '.')}"
-                cotacoes.append(f"{emoji} {moeda}: {valor_formatado}")
-
-        if not cotacoes:
-            return "⚠️ Nenhuma cotação encontrada. Verifique a API."
-
-        return "📈 Cotações principais:\n\n" + "\n".join(cotacoes)
-
-    except Exception as e:
-        logger.exception("❌ Erro ao buscar cotações:")
-        return f"❌ Erro ao buscar cotações: {str(e)}"
-
-
-def obter_cotacao(moeda: str):
-    """
-    Obtém a cotação da moeda informada e retorna o nome da moeda.
-    """
-    moeda = moeda.upper()
-    nome_moeda = MOEDAS.get(moeda, "Moeda não encontrada")
-
-    try:
-        response = requests.get(f"https://economia.awesomeapi.com.br/json/last/{moeda}-BRL")
-        data = response.json()
-        key = f"{moeda}BRL"
-
-        if key in data:
-            valor = float(data[key]['bid'])
-            return f"💰 {nome_moeda} ({moeda}/BRL): R${valor:.2f}"
-        else:
-            return "⚠️ Moeda não encontrada. Use códigos como USD, EUR, BTC..."
-    except Exception as e:
-        logger.exception("❌ Erro ao buscar cotação:")
-        return f"❌ Erro ao buscar cotação: {str(e)}"
-
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
     logger = logging.getLogger(__name__)

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import json
 from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
+from backend.services.db_init import inicializar_bd
 
 from backend.services.gastos_service import (
     salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario
@@ -25,6 +26,7 @@ app = FastAPI()
 DATABASE_URL = os.getenv("DATABASE_URL")
 WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
 API_COTACAO = os.getenv("API_COTACAO")
+inicializar_bd(DATABASE_URL)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
 MOEDAS_FILE = os.path.join(BASE_DIR, "data", "moedas.json")  # Caminho correto
 

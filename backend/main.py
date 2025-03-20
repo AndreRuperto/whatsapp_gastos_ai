@@ -7,6 +7,7 @@ import requests
 from dotenv import load_dotenv
 import json
 from backend.services.scheduler import scheduler
+from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 
 from backend.services.gastos_service import (
     salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario
@@ -24,9 +25,12 @@ app = FastAPI()
 DATABASE_URL = os.getenv("DATABASE_URL")
 WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
 API_COTACAO = os.getenv("API_COTACAO")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
+MOEDAS_FILE = os.path.join(BASE_DIR, "data", "moedas.json")  # Caminho correto
 
-with open("backend/data/moedas.json", "r", encoding="utf-8") as file:
+with open(MOEDAS_FILE, "r", encoding="utf-8") as file:
     dados_moedas = json.load(file)
+
 
 MOEDAS = dados_moedas.get("moedas_disponiveis", {})
 MOEDA_EMOJIS = {
@@ -37,7 +41,6 @@ MOEDA_EMOJIS = {
     "ETH": "💎"
 }
 MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 @app.post("/webhook")
 async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
@@ -453,35 +456,3 @@ def definir_categoria(descricao: str):
         if chave in descricao.lower():
             return cat
     return "Outros"
-
-def enviar_mensagem_whatsapp(telefone, mensagem):
-    logger = logging.getLogger(__name__)
-    
-    logger.info("Telefone original recebido: %s", telefone)
-
-    numero_limpo = telefone.replace("whatsapp:", "").replace("+", "")
-    logger.info("Após remover 'whatsapp:' e '+': %s", numero_limpo)
-
-    # Se ainda terminar com '@c.us', removemos
-    if numero_limpo.endswith("@c.us"):
-        logger.info("O número termina com '@c.us'. Removendo sufixo...")
-        numero_limpo = numero_limpo[:-5]  # remove os últimos 5 caracteres
-    else:
-        logger.info("O número não termina com '@c.us'. Nada a remover.")
-
-    logger.info("Número final (limpo): %s", numero_limpo)
-
-    payload = {
-        "number": numero_limpo,  # ex.: "556199570838"
-        "message": mensagem
-    }
-    logger.info("Payload final a ser enviado: %s", payload)
-
-    try:
-        response = requests.post(WHATSAPP_BOT_URL, json=payload)
-        logger.info("Resposta do POST status code: %d", response.status_code)
-        response.raise_for_status()
-        return {"status": "Mensagem enviada"}
-    except requests.exceptions.RequestException as e:
-        logger.exception("❌ Erro ao enviar mensagem via WhatsApp:")
-        return {"status": "Erro ao enviar mensagem", "error": str(e)}

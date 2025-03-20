@@ -3,7 +3,7 @@ import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 import os
-from backend import enviar_mensagem_whatsapp
+from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 
 # Carregar variáveis do .env
 load_dotenv()

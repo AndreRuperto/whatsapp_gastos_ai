@@ -35,8 +35,8 @@ def inicializar_bd(DATABASE_URL):
         categoria TEXT,
         meio_pagamento TEXT,
         parcela TEXT,
-        data_fim DATE;
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        data_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data_fim DATE
         )
     ''')
     conn.commit()

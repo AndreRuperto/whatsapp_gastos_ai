@@ -30,9 +30,13 @@ def inicializar_bd(DATABASE_URL):
     ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS fatura_cartao (
-            id SERIAL PRIMARY KEY,
-            valor REAL,
-            data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        id SERIAL PRIMARY KEY,
+        valor REAL,
+        categoria TEXT,
+        meio_pagamento TEXT,
+        parcela TEXT,
+        data_fim DATE;
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()

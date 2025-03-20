@@ -12,3 +12,4 @@ matplotlib==3.8.3
 seaborn==0.13.2
 tqdm==4.66.2
 streamlit==1.32.0
+apscheduler==3.10.4

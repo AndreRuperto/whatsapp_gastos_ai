@@ -50,6 +50,7 @@
             font-size: 16px;
             font-weight: bold;
             margin-top: 10px;
+            color: #333;
         }
 
         #timer {
@@ -60,36 +61,43 @@
     </style>
     <script>
         let timeRemaining = 30; // Tempo inicial de 30 segundos antes do QR Code expirar
+        let isConnected = false; // Flag para verificar se o bot já conectou
 
         async function fetchQRCode() {
             const response = await fetch('/qrcode');
             const data = await response.json();
             const qrcodeImage = document.getElementById("qrcode");
             const statusText = document.getElementById("status");
-            
-            if (data.qr) {
+            const timerElement = document.getElementById("timer");
+
+            if (data.status === "connected") {
+                statusText.innerHTML = "✅ Bot Conectado!";
+                qrcodeImage.style.display = "none"; // Esconde o QR Code se estiver conectado
+                timerElement.style.display = "none"; // Esconde o contador
+                clearInterval(timerInterval); // Para a contagem do tempo
+                isConnected = true;
+            } else if (data.qr && !isConnected) {
                 qrcodeImage.src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(data.qr);
                 statusText.innerHTML = "⏳ Aguardando conexão...";
                 timeRemaining = 30; // Reinicia o contador para 30 segundos
-            } else if (data.status === "connected") {
-                statusText.innerHTML = "✅ Bot Conectado!";
-                qrcodeImage.style.display = "none"; // Esconde o QR Code se estiver conectado
-                document.getElementById("timer").style.display = "none"; // Esconde o contador
-                clearInterval(timerInterval); // Para a contagem do tempo
+                qrcodeImage.style.display = "block"; // Garante que o QR Code fique visível
+                timerElement.style.display = "block"; // Exibe o contador novamente
             }
         }
 
         function updateTimer() {
             const timerElement = document.getElementById("timer");
-            if (timeRemaining > 0) {
-                timerElement.innerHTML = `QR Code expira em: ${timeRemaining}s`;
-                timeRemaining--;
-            } else {
-                timerElement.innerHTML = "⏳ Gerando novo QR Code...";
+            if (!isConnected) {
+                if (timeRemaining > 0) {
+                    timerElement.innerHTML = `QR Code expira em: ${timeRemaining}s`;
+                    timeRemaining--;
+                } else {
+                    timerElement.innerHTML = "⏳ Gerando novo QR Code...";
+                }
             }
         }
 
-        setInterval(fetchQRCode, 30000); // Atualiza o QR Code a cada 5 segundos
+        setInterval(fetchQRCode, 5000); // Atualiza o QR Code a cada 5 segundos
         const timerInterval = setInterval(updateTimer, 1000); // Atualiza o tempo restante a cada segundo
     </script>
 </head>

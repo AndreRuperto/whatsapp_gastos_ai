@@ -108,13 +108,14 @@ def processar_mensagem(mensagem: str):
                 valor = float(parte)
                 descricao = " ".join(partes[:i])
 
-                # 📌 Detectando parcelamento
+                # 📌 Detectando parcelamento (Ex: "3x crédito")
                 if i + 1 < len(partes) and partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
                     parcelas = int(partes[i + 1][:-1])
+                    i += 1  # Avançar para evitar erro
 
-                # 📌 Detectando meio de pagamento
-                if i + 2 < len(partes) and partes[i + 2] in ["pix", "crédito", "débito"]:
-                    meio_pagamento = partes[i + 2]
+                # 📌 Detectando meio de pagamento (Ex: "crédito", "débito", "pix")
+                if i + 1 < len(partes) and partes[i + 1] in ["pix", "crédito", "débito"]:
+                    meio_pagamento = partes[i + 1]
 
                 break  # Paramos após encontrar o valor
 

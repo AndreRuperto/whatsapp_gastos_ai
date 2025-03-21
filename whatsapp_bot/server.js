@@ -46,8 +46,27 @@ app.get('/qrcode', (req, res) => {
     }
 });
 
+let botStatus = { conectado: false };
+
+function atualizarStatus(conectado) {
+    botStatus.conectado = conectado;
+}
+
+// Quando o bot conectar, atualize o status
 client.on('ready', () => {
-    console.log('✅ Bot conectado com sucesso!');
+    console.log("✅ Bot conectado com sucesso!");
+    atualizarStatus(true);
+});
+
+// Quando o bot desconectar, atualize o status
+client.on('disconnected', () => {
+    console.log("❌ Bot desconectado!");
+    atualizarStatus(false);
+});
+
+// Rota para obter o status do bot
+app.get('/status-bot', (req, res) => {
+    res.json(botStatus);
 });
 
 client.on('message', async msg => {

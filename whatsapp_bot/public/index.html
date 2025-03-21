@@ -70,8 +70,9 @@
         }
     </style>
     <script>
-        let timeRemaining = 30; // Tempo inicial de 30 segundos antes do QR Code expirar
-        let isConnected = false; // Flag para verificar se o bot já conectou
+        let timeRemaining = 10; // Tempo de expiração agora é 10 segundos
+        let isConnected = false;
+        let qrReceived = false; // Flag para verificar se um QR foi recebido
 
         async function fetchQRCode() {
             const response = await fetch('/qrcode');
@@ -87,11 +88,14 @@
                 clearInterval(timerInterval); // Para a contagem do tempo
                 isConnected = true;
             } else if (data.qr && !isConnected) {
-                qrcodeImage.src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(data.qr);
-                statusText.innerHTML = "⏳ Aguardando conexão...";
-                timeRemaining = 30; // Reinicia o contador para 30 segundos
-                qrcodeImage.style.display = "block"; // Garante que o QR Code fique visível
-                timerElement.style.display = "block"; // Exibe o contador novamente
+                if (!qrReceived) {
+                    qrcodeImage.src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(data.qr);
+                    statusText.innerHTML = "⏳ Aguardando conexão...";
+                    timeRemaining = 10; // Mantém o tempo de 10s e não reinicia o contador
+                    qrReceived = true; // Marca que já recebeu um QR Code
+                    qrcodeImage.style.display = "block";
+                    timerElement.style.display = "block";
+                }
             }
         }
 
@@ -103,6 +107,7 @@
                     timeRemaining--;
                 } else {
                     timerElement.innerHTML = "⏳ Gerando novo QR Code...";
+                    qrReceived = false; // Permite receber um novo QR Code
                 }
             }
         }
@@ -116,7 +121,7 @@
         <h1>Escaneie o QR Code para conectar</h1>
         <img id="qrcode" src="" alt="QR Code do WhatsApp">
         <p id="status">🔄 Aguardando QR Code...</p>
-        <p id="timer">QR Code expira em: 30s</p>
+        <p id="timer">QR Code expira em: 10s</p>
     </div>
 </body>
 </html>

@@ -49,6 +49,17 @@ async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
         resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
+    
+    if mensagem.lower() == "cotação":
+        resposta = obter_cotacao_principais()
+        enviar_mensagem_whatsapp(telefone, resposta)
+        return {"status": "OK", "resposta": resposta}
+
+    if mensagem.startswith("cotação "):
+        moeda = mensagem.split(" ")[1].upper()
+        resposta = obter_cotacao(moeda)
+        enviar_mensagem_whatsapp(telefone, resposta)
+        return {"status": "OK", "resposta": resposta}
 
     # 📌 Processamento de gastos
     logger.info("🔍 Tentando processar mensagem como gasto...")

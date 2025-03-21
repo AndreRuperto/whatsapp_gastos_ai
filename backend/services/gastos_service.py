@@ -3,6 +3,7 @@ import psycopg2
 import datetime
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -10,34 +11,29 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 def salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas):
     """
-    Salva os gastos parcelados na tabela `fatura_cartao` com as informações corretas.
+    Registra uma compra parcelada na tabela 'fatura_cartao'.
     """
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cursor = conn.cursor()
 
-        data_compra = datetime.datetime.now()  # Data da compra
-        dia_fechamento = 7  # Defina o dia de fechamento da fatura
+    from datetime import datetime
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
 
-        for i in range(parcelas):
-            data_fim = (data_compra + datetime.timedelta(days=30 * i)).replace(day=dia_fechamento)
+    data_compra = datetime.now().strftime("%Y-%m-%d")  # Pega a data atual da compra
+    datas_fatura = calcular_datas_fatura(data_compra, parcelas)  # Calcula as datas das parcelas
 
-            parcela_texto = f"{i+1}/{parcelas}"  # Exemplo: "1/2", "2/2"
+    for i, data_fim in enumerate(datas_fatura):
+        parcela_numero = f"{i+1}/{parcelas}"
+        cursor.execute('''
+            INSERT INTO fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ''', (descricao, valor/parcelas, categoria, meio_pagamento, parcela_numero, data_compra, data_fim))
 
-            cursor.execute(
-                "INSERT INTO fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (descricao, valor / parcelas, categoria, meio_pagamento, parcela_texto, data_compra, data_fim)
-            )
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+    print("✅ Fatura registrada com datas corrigidas!")
 
-        print("✅ Fatura salva com sucesso!")
-
-    except Exception as e:
-        print(f"❌ Erro ao salvar fatura: {e}")
 
 def salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas):
     """
@@ -110,3 +106,24 @@ def registrar_salario(mensagem):
     except Exception as e:
         print(f"❌ Erro ao registrar salário: {e}")
         return {"status": "❌ Erro ao registrar salário"}
+
+def calcular_datas_fatura(data_compra: str, num_parcelas: int):
+    """
+    Calcula as datas de vencimento das parcelas do cartão de crédito.
+
+    - O vencimento da primeira parcela será sempre no mês seguinte à data da compra.
+    - O dia do vencimento será fixo (exemplo: dia 6).
+    - Retorna uma lista de strings no formato 'YYYY-MM-DD'.
+    """
+    datas_pagamento = []
+    data_base = datetime.strptime(data_compra, "%Y-%m-%d")  # Converte a data da compra para datetime
+
+    # Define a primeira data de vencimento para o mês seguinte ao da compra
+    primeiro_vencimento = (data_base.replace(day=1) + timedelta(days=32)).replace(day=6)
+
+    for parcela in range(num_parcelas):
+        datas_pagamento.append(primeiro_vencimento.strftime("%Y-%m-%d"))
+        # Avança para o próximo mês
+        primeiro_vencimento = (primeiro_vencimento.replace(day=1) + timedelta(days=32)).replace(day=6)
+
+    return datas_pagamento

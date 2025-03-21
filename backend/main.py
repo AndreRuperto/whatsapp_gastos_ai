@@ -5,6 +5,7 @@ import psycopg2
 import datetime
 import requests
 from dotenv import load_dotenv
+import json
 
 from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
@@ -28,7 +29,24 @@ load_dotenv()
 app = FastAPI()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
+MOEDAS_FILE = os.path.join(BASE_DIR, "..", "data", "moedas.json")
+
+with open(MOEDAS_FILE, "r", encoding="utf-8") as file:
+    dados_moedas = json.load(file)
+
+
+MOEDAS = dados_moedas.get("moedas_disponiveis", {})
+MOEDA_EMOJIS = {
+    "USD": "🇺🇸",
+    "EUR": "🇺🇳",
+    "GBP": "🏴",
+    "BTC": "🪙",
+    "ETH": "💎"
+}
 
 @app.post("/webhook")
 async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
@@ -51,15 +69,16 @@ async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
         return {"status": "OK", "resposta": resposta}
     
     if mensagem.lower() == "cotação":
-        resposta = obter_cotacao_principais()
+        resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)  # Adicionado os argumentos
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
     if mensagem.startswith("cotação "):
         moeda = mensagem.split(" ")[1].upper()
-        resposta = obter_cotacao(moeda)
+        resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)  # Adicionado os argumentos
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
+
 
     # 📌 Processamento de gastos
     logger.info("🔍 Tentando processar mensagem como gasto...")
@@ -86,7 +105,6 @@ async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
 
     enviar_mensagem_whatsapp(telefone, resposta)
     return {"status": "OK", "resposta": resposta}
-
 
 def processar_mensagem(mensagem: str):
     """

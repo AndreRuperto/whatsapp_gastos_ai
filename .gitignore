@@ -45,3 +45,6 @@ htmlcov/
 
 # Ignorar modelos treinados do spaCy
 nlp_categorizer/model_spacy/
+
+backend/services/teste.py
+

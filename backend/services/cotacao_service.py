@@ -6,7 +6,7 @@ import os
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
-MOEDAS_FILE = os.path.join(BASE_DIR, "data", "moedas.json")  # Caminho correto
+MOEDAS_FILE = os.path.join(BASE_DIR, "..", "data", "moedas.json")
 
 with open(MOEDAS_FILE, "r", encoding="utf-8") as file:
     dados_moedas = json.load(file)

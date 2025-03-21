@@ -12,7 +12,7 @@ from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 from backend.services.db_init import inicializar_bd
 
 from backend.services.cotacao_service import (
-    obter_cotacao_principais, obter_cotacao
+    obter_cotacao_principais, obter_cotacao, MOEDAS, MOEDA_EMOJIS
 )
 
 from backend.services.gastos_service import (
@@ -31,22 +31,6 @@ app = FastAPI()
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
-MOEDAS_FILE = os.path.join(BASE_DIR, "..", "data", "moedas.json")
-
-with open(MOEDAS_FILE, "r", encoding="utf-8") as file:
-    dados_moedas = json.load(file)
-
-
-MOEDAS = dados_moedas.get("moedas_disponiveis", {})
-MOEDA_EMOJIS = {
-    "USD": "🇺🇸",
-    "EUR": "🇺🇳",
-    "GBP": "🏴",
-    "BTC": "🪙",
-    "ETH": "💎"
-}
 
 @app.post("/webhook")
 async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
@@ -95,12 +79,11 @@ async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
         descricao, valor, categoria, meio_pagamento, parcelas
     )
 
-    # Salva o gasto
-    salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
-
     if meio_pagamento in ["pix", "débito"]:
+        salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
         resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
     else:
+        salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
         resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
 
     enviar_mensagem_whatsapp(telefone, resposta)

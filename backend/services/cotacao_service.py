@@ -1,9 +1,27 @@
 import logging
 import requests
+import json
+import os
 
 logger = logging.getLogger(__name__)
 
-def obter_cotacao_principais(API_COTACAO, MOEDAS, MOEDA_EMOJIS):
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
+MOEDAS_FILE = os.path.join(BASE_DIR, "data", "moedas.json")  # Caminho correto
+
+with open(MOEDAS_FILE, "r", encoding="utf-8") as file:
+    dados_moedas = json.load(file)
+
+
+MOEDAS = dados_moedas.get("moedas_disponiveis", {})
+MOEDA_EMOJIS = {
+    "USD": "🇺🇸",
+    "EUR": "🇺🇳",
+    "GBP": "🏴",
+    "BTC": "🪙",
+    "ETH": "💎"
+}
+
+def obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS):
     moedas = ["USD", "EUR", "GBP", "BTC", "ETH"]
     url = f"{API_COTACAO}" + ",".join([f"{m}-BRL" for m in moedas])
     logger.info("📡 Buscando cotações na URL: %s", url)
@@ -29,7 +47,7 @@ def obter_cotacao_principais(API_COTACAO, MOEDAS, MOEDA_EMOJIS):
         logger.exception("❌ Erro ao buscar cotações:")
         return f"❌ Erro ao buscar cotações: {str(e)}"
 
-def obter_cotacao(API_COTACAO, moeda, MOEDAS, MOEDA_EMOJIS):
+def obter_cotacao(API_COTACAO, moeda, MOEDAS):
     moeda = moeda.upper()
     nome_moeda = MOEDAS.get(moeda, "Moeda não encontrada")
 

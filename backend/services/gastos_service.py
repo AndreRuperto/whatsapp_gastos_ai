@@ -9,13 +9,15 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+def conectar_bd():
+    """Estabelece conexão com o banco de dados."""
+    return psycopg2.connect(DATABASE_URL)
+
 def salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas):
     """
     Registra uma compra parcelada na tabela 'fatura_cartao'.
     """
-
-    from datetime import datetime
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = conectar_bd()
     cursor = conn.cursor()
 
     data_compra = datetime.now().strftime("%Y-%m-%d")  # Pega a data atual da compra
@@ -35,19 +37,35 @@ def salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas):
     print("✅ Fatura registrada com datas corrigidas!")
 
 
-def salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas):
+def salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas=1):
     """
-    Salva o gasto no banco de dados PostgreSQL.
+    Salva um gasto no banco de dados.
+    
+    Se for débito ou PIX, insere diretamente na tabela 'gastos'.
+    Se for crédito, insere na tabela 'fatura_cartao' e NÃO na tabela 'gastos' até o pagamento da fatura.
     """
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = conectar_bd()
     cursor = conn.cursor()
 
-    for i in range(parcelas):
-        data = datetime.datetime.now() + datetime.timedelta(days=30 * i)
-        cursor.execute(
-            "INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas, data) VALUES (%s, %s, %s, %s, %s, %s)",
-            (descricao, valor / parcelas, categoria, meio_pagamento, parcelas, data)
-        )
+    if meio_pagamento in ["pix", "débito"]:
+        # Gasto direto, registra na tabela 'gastos'
+        cursor.execute('''
+            INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (descricao, valor, categoria, meio_pagamento, parcelas))
+        logger.info(f"✅ Gasto registrado: {descricao} | R$ {valor:.2f} | {categoria} | {meio_pagamento}")
+
+    elif meio_pagamento == "crédito":
+        # Se for crédito, cria as parcelas na tabela 'fatura_cartao'
+        data_inicio = datetime.now()
+        for parcela in range(1, parcelas + 1):
+            data_fim = (data_inicio + timedelta(days=30 * parcela)).strftime("%Y-%m-%d")  # Ajustando para o próximo mês
+            cursor.execute('''
+                INSERT INTO fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (descricao, valor / parcelas, categoria, meio_pagamento, f"{parcela}/{parcelas}", data_inicio, data_fim))
+        
+        logger.info(f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}")
 
     conn.commit()
     cursor.close()
@@ -67,28 +85,35 @@ def calcular_total_gasto():
 
 def pagar_fatura():
     """
-    Remove todas as compras parceladas que vencem no mês atual.
+    Consolida a fatura do cartão e adiciona o valor total na tabela 'gastos'.
     """
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cursor = conn.cursor()
+    conn = conectar_bd()
+    cursor = conn.cursor()
 
-        primeiro_dia = datetime.date.today().replace(day=1)
-        ultimo_dia = primeiro_dia + datetime.timedelta(days=30)
+    # Obtém o total da fatura do mês atual
+    cursor.execute('''
+        SELECT SUM(valor) FROM fatura_cartao 
+        WHERE DATE_PART('month', data_fim) = DATE_PART('month', CURRENT_DATE)
+        AND DATE_PART('year', data_fim) = DATE_PART('year', CURRENT_DATE)
+    ''')
+    
+    total_fatura = cursor.fetchone()[0]
 
-        cursor.execute(
-            "DELETE FROM fatura_cartao WHERE data_fim BETWEEN %s AND %s",
-            (primeiro_dia, ultimo_dia)
-        )
+    if total_fatura:
+        cursor.execute('''
+            INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', ("Fatura do Cartão", total_fatura, "Cartão de Crédito", "crédito", 1))
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # Remove os registros da fatura após o pagamento
+        cursor.execute('''
+            DELETE FROM fatura_cartao WHERE DATE_PART('month', data_fim) = DATE_PART('month', CURRENT_DATE)''')
+        
+        logger.info(f"✅ Fatura paga! Total adicionado aos gastos: R$ {total_fatura:.2f}")
 
-        print("✅ Fatura do mês paga! Compras removidas.")
-
-    except Exception as e:
-        print(f"❌ Erro ao pagar fatura: {e}")
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 def registrar_salario(mensagem):
     """
@@ -119,7 +144,7 @@ def calcular_datas_fatura(data_compra: str, num_parcelas: int):
     data_base = datetime.strptime(data_compra, "%Y-%m-%d")  # Converte a data da compra para datetime
 
     # Define a primeira data de vencimento para o mês seguinte ao da compra
-    primeiro_vencimento = (data_base.replace(day=1) + timedelta(days=32)).replace(day=6)
+    primeiro_vencimento = (data_base.replace(day=1) + timedelta(days=32)).replace(day=7)
 
     for parcela in range(num_parcelas):
         datas_pagamento.append(primeiro_vencimento.strftime("%Y-%m-%d"))

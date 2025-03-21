@@ -5,7 +5,7 @@ import psycopg2
 import datetime
 import requests
 from dotenv import load_dotenv
-import json
+
 from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 from backend.services.db_init import inicializar_bd
@@ -28,25 +28,7 @@ load_dotenv()
 app = FastAPI()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
-API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Obtém o diretório do script atual
-MOEDAS_FILE = os.path.join(BASE_DIR, "data", "moedas.json")  # Caminho correto
-
-with open(MOEDAS_FILE, "r", encoding="utf-8") as file:
-    dados_moedas = json.load(file)
-
-
-MOEDAS = dados_moedas.get("moedas_disponiveis", {})
-MOEDA_EMOJIS = {
-    "USD": "🇺🇸",
-    "EUR": "🇺🇳",
-    "GBP": "🏴",
-    "BTC": "🪙",
-    "ETH": "💎"
-}
-MEIOS_PAGAMENTO_VALIDOS = ["pix", "crédito", "débito"]
 
 @app.post("/webhook")
 async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
@@ -55,41 +37,24 @@ async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
 
     logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
-    # 📌 Comandos Específicos
+    # 📌 Comandos específicos
     if mensagem.lower() == "total gasto no mês?":
         total = calcular_total_gasto()
         resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
-    if "salario" in mensagem.lower():
-        status = registrar_salario(mensagem)
-        enviar_mensagem_whatsapp(telefone, status["status"])
-        return status
-
     if mensagem.lower() == "fatura paga!":
         pagar_fatura()
-        resposta = "✅ Todas as compras parceladas deste mês foram removidas da fatura!"
+        resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
-    if mensagem.lower() == "cotação":
-        resposta = obter_cotacao_principais()
-        enviar_mensagem_whatsapp(telefone, resposta)
-        return {"status": "OK", "resposta": resposta}
-
-    if mensagem.startswith("cotação "):
-        moeda = mensagem.split(" ")[1].upper()
-        resposta = obter_cotacao(moeda)
-        enviar_mensagem_whatsapp(telefone, resposta)
-        return {"status": "OK", "resposta": resposta}
-
-    # 📌 Processamento de GASTOS
+    # 📌 Processamento de gastos
     logger.info("🔍 Tentando processar mensagem como gasto...")
-
+    
     descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
 
-    # ⚠️ Verificação de erro no processamento
     if descricao == "Erro" or valor == 0.0:
         resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
         enviar_mensagem_whatsapp(telefone, resposta)
@@ -100,24 +65,24 @@ async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
         descricao, valor, categoria, meio_pagamento, parcelas
     )
 
-    # Se for pagamento no crédito e parcelado, salva na tabela `fatura_cartao`
-    if meio_pagamento == "crédito" and parcelas > 1:
-        salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
-        resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
-    else:
-        salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
+    # Salva o gasto
+    salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
+
+    if meio_pagamento in ["pix", "débito"]:
         resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
+    else:
+        resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
 
     enviar_mensagem_whatsapp(telefone, resposta)
     return {"status": "OK", "resposta": resposta}
 
+
 def processar_mensagem(mensagem: str):
     """
     Processa a mensagem e extrai descrição, valor, categoria, meio de pagamento e parcelas.
-    Inclui logs detalhados para entender cada etapa do parsing.
     """
     try:
-        logger.info("📩 Mensagem original recebida (ultima alteração): '%s'", mensagem)
+        logger.info("📩 Mensagem original recebida: '%s'", mensagem)
         partes = mensagem.lower().split()
         logger.info("🔎 Mensagem após split: %s", partes)
 
@@ -127,38 +92,25 @@ def processar_mensagem(mensagem: str):
         descricao = ""
 
         for i, parte in enumerate(partes):
-            logger.info("   - Verificando parte [%d]: '%s'", i, parte)
-
             if parte.replace(".", "").isdigit():
                 valor = float(parte)
-                logger.info("   -> Valor numérico encontrado: %.2f", valor)
-
-                # 📌 Detectando parcelamento mesmo que ele venha depois
-                if i + 1 < len(partes):
-                    logger.info("   📌 Verificando possível parcelamento em: '%s'", partes[i + 1])
-                    if partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
-                        parcelas = int(partes[i + 1][:-1])
-                        logger.info("   ✅ Parcelamento identificado: %dx", parcelas)
-
                 descricao = " ".join(partes[:i])
-                logger.info("   -> Descrição identificada: '%s'", descricao)
+
+                # 📌 Detectando parcelamento
+                if i + 1 < len(partes) and partes[i + 1].endswith("x") and partes[i + 1][:-1].isdigit():
+                    parcelas = int(partes[i + 1][:-1])
 
                 # 📌 Detectando meio de pagamento
-                if i + 2 < len(partes):
-                    logger.info("   📌 Verificando possível meio de pagamento em: '%s'", partes[i + 2])
-                    if partes[i + 2] in MEIOS_PAGAMENTO_VALIDOS:
-                        meio_pagamento = partes[i + 2]
-                        logger.info("   ✅ Meio de pagamento identificado: '%s'", meio_pagamento)
+                if i + 2 < len(partes) and partes[i + 2] in ["pix", "crédito", "débito"]:
+                    meio_pagamento = partes[i + 2]
 
-                break  # Interrompe o loop pois o valor já foi encontrado
+                break  # Paramos após encontrar o valor
 
         if valor == 0.0:
             logger.warning("⚠️ Nenhum valor encontrado na mensagem!")
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
         categoria = definir_categoria(descricao)
-        logger.info("   -> Categoria definida: '%s'", categoria)
-
         return descricao.strip(), valor, categoria, meio_pagamento, parcelas
 
     except Exception as e:

@@ -10,6 +10,10 @@ from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 from backend.services.db_init import inicializar_bd
 
+from backend.services.cotacao_service import (
+    obter_cotacao_principais, obter_cotacao
+)
+
 from backend.services.gastos_service import (
     salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario
 )

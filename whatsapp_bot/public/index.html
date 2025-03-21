@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Bot - QR Code</title>
     <style>
-        /* Importa uma fonte moderna do Google Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
 
-        /* Estiliza a página */
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #f4f4f4;
@@ -32,6 +30,7 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
 
         img {
@@ -46,23 +45,60 @@
             font-size: 14px;
             margin-top: 10px;
         }
+
+        #status {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #timer {
+            font-size: 14px;
+            color: red;
+            font-weight: bold;
+        }
     </style>
     <script>
+        let timeRemaining = 30; // Tempo inicial de 30 segundos antes do QR Code expirar
+
         async function fetchQRCode() {
             const response = await fetch('/qrcode');
             const data = await response.json();
+            const qrcodeImage = document.getElementById("qrcode");
+            const statusText = document.getElementById("status");
+            
             if (data.qr) {
-                document.getElementById("qrcode").src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(data.qr);
+                qrcodeImage.src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(data.qr);
+                statusText.innerHTML = "⏳ Aguardando conexão...";
+                timeRemaining = 30; // Reinicia o contador para 30 segundos
+            } else if (data.status === "connected") {
+                statusText.innerHTML = "✅ Bot Conectado!";
+                qrcodeImage.style.display = "none"; // Esconde o QR Code se estiver conectado
+                document.getElementById("timer").style.display = "none"; // Esconde o contador
+                clearInterval(timerInterval); // Para a contagem do tempo
             }
         }
-        setInterval(fetchQRCode, 5000); // Atualiza a cada 5 segundos
+
+        function updateTimer() {
+            const timerElement = document.getElementById("timer");
+            if (timeRemaining > 0) {
+                timerElement.innerHTML = `QR Code expira em: ${timeRemaining}s`;
+                timeRemaining--;
+            } else {
+                timerElement.innerHTML = "⏳ Gerando novo QR Code...";
+            }
+        }
+
+        setInterval(fetchQRCode, 5000); // Atualiza o QR Code a cada 5 segundos
+        const timerInterval = setInterval(updateTimer, 1000); // Atualiza o tempo restante a cada segundo
     </script>
 </head>
 <body onload="fetchQRCode()">
     <div class="container">
         <h1>Escaneie o QR Code para conectar</h1>
         <img id="qrcode" src="" alt="QR Code do WhatsApp">
-        <p>Abra o WhatsApp e escaneie o QR Code para iniciar o bot.</p>
+        <p id="status">🔄 Aguardando QR Code...</p>
+        <p id="timer">QR Code expira em: 30s</p>
     </div>
 </body>
 </html>

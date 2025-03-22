@@ -83,22 +83,19 @@
 
             if (data.status === "connected") {
                 statusText.innerHTML = "✅ Bot Conectado!";
-                qrcodeImage.style.display = "none"; // Esconde o QR Code se estiver conectado
+                qrcodeImage.style.display = "none"; // Esconde o QR Code
                 timerElement.style.display = "none"; // Esconde o contador
-                clearInterval(timerInterval); // Para a contagem do tempo
+                clearInterval(timerInterval);
                 isConnected = true;
             } else if (data.qr && !isConnected) {
-                if (!qrReceived) {
-                    qrcodeImage.src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(data.qr);
-                    statusText.innerHTML = "⏳ Aguardando conexão...";
-                    timeRemaining = 10; // Mantém o tempo de 10s e não reinicia o contador
-                    qrReceived = true; // Marca que já recebeu um QR Code
-                    qrcodeImage.style.display = "block";
-                    timerElement.style.display = "block";
-                }
+                qrcodeImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr)}`;
+                statusText.innerHTML = "⏳ Aguardando conexão...";
+                timeRemaining = 10; // Agora o QR Code expira em 10s
+                qrcodeImage.style.display = "block";
+                timerElement.style.display = "block";
             }
         }
-
+        
         function updateTimer() {
             const timerElement = document.getElementById("timer");
             if (!isConnected) {

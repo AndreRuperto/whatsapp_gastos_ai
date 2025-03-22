@@ -39,11 +39,13 @@ client.on('qr', (qr) => {
 
 // **Rota para servir o QR Code**
 app.get('/qrcode', (req, res) => {
-    if (qrCodeData) {
-        res.json({ qr: qrCodeData });
-    } else {
-        res.status(404).json({ error: "QR Code ainda não gerado." });
+    if (botStatus.conectado) {
+        return res.json({ status: "connected" }); // Retorna "connected" quando o bot estiver online
     }
+    if (qrCodeData) {
+        return res.json({ qr: qrCodeData, status: "pending" }); // Retorna o QR Code se ainda não conectado
+    }
+    return res.json({ status: "waiting" }); // Caso o QR ainda não tenha sido gerado
 });
 
 let botStatus = { conectado: false };

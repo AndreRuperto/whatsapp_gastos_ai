@@ -6,6 +6,7 @@ import datetime
 import requests
 from dotenv import load_dotenv
 import json
+from fastapi.responses import PlainTextResponse
 
 from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
@@ -28,6 +29,7 @@ load_dotenv()
 
 app = FastAPI()
 
+VERIFY_TOKEN = "andrezobot"
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)
@@ -35,6 +37,13 @@ inicializar_bd(DATABASE_URL)
 @app.get("/ping")
 def ping():
     return {"status": "alive!"}
+
+@app.get("/webhook")
+async def verify(request: Request):
+    params = dict(request.query_params)
+    if params.get("hub.mode") == "subscribe" and params.get("hub.verify_token") == VERIFY_TOKEN:
+        return PlainTextResponse(content=params["hub.challenge"])
+    return {"status": "erro", "mensagem": "Token inválido."}
 
 @app.post("/webhook")
 async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):

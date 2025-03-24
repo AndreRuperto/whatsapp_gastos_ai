@@ -18,8 +18,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # 🔹 Arquivos do WhatsApp Web.js
-whatsapp_bot/.wwebjs_auth/
-whatsapp_bot/.wwebjs_cache/
+whatsapp_web_js
+#whatsapp_web_js/.wwebjs_auth/  - usar pro railway-whatsapp-web-js
+#whatsapp_web_js/.wwebjs_cache/
 
 # 🔹 Arquivos temporários e de cache
 *.log

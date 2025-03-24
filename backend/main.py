@@ -6,7 +6,7 @@ import datetime
 import requests
 from dotenv import load_dotenv
 import json
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 
 from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
@@ -38,7 +38,7 @@ inicializar_bd(DATABASE_URL)
 def ping():
     return {"status": "alive!"}
 
-@app.get("/webhook")
+@app.get("/webhook") # Usado para verificação inicial da Meta
 async def verify(request: Request):
     params = dict(request.query_params)
     if params.get("hub.mode") == "subscribe" and params.get("hub.verify_token") == VERIFY_TOKEN:
@@ -46,61 +46,72 @@ async def verify(request: Request):
     return {"status": "erro", "mensagem": "Token inválido."}
 
 @app.post("/webhook")
-async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
-    mensagem = Body.strip()
-    telefone = From.replace("whatsapp:", "").replace("+", "")
+async def receber_mensagem(request: Request):
+    dados = await request.json()
+    logger.info("📩 Payload recebido: %s", json.dumps(dados, indent=2))
 
-    logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
+    try:
+        mensagens = dados["entry"][0]["changes"][0]["value"].get("messages", [])
+        if not mensagens:
+            return JSONResponse(content={"status": "ignorado", "mensagem": "Nenhuma mensagem nova."}, status_code=200)
 
-    # 📌 Comandos específicos
-    if mensagem.lower() == "total gasto no mês?":
-        total = calcular_total_gasto()
-        resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
+        mensagem_obj = mensagens[0]
+        mensagem = mensagem_obj["text"]["body"]
+        telefone = mensagem_obj["from"]
+
+        logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
+
+        # 📌 Comandos específicos
+        if mensagem.lower() == "total gasto no mês?":
+            total = calcular_total_gasto()
+            resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
+            enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
+        if mensagem.lower() == "fatura paga!":
+            pagar_fatura()
+            resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
+            enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
+        if mensagem.lower() == "cotação":
+            resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
+            enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
+        if mensagem.startswith("cotação "):
+            moeda = mensagem.split(" ")[1].upper()
+            resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)
+            enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
+        # 📌 Processamento de gastos
+        logger.info("🔍 Tentando processar mensagem como gasto...")
+        descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
+
+        if descricao == "Erro" or valor == 0.0:
+            resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
+            enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "ERRO", "resposta": resposta}
+
+        logger.info(
+            "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
+            descricao, valor, categoria, meio_pagamento, parcelas
+        )
+
+        if meio_pagamento in ["pix", "débito"]:
+            salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
+            resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
+        else:
+            salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
+            resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
+
         enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
-    if mensagem.lower() == "fatura paga!":
-        pagar_fatura()
-        resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
-        enviar_mensagem_whatsapp(telefone, resposta)
-        return {"status": "OK", "resposta": resposta}
-    
-    if mensagem.lower() == "cotação":
-        resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)  # Adicionado os argumentos
-        enviar_mensagem_whatsapp(telefone, resposta)
-        return {"status": "OK", "resposta": resposta}
-
-    if mensagem.startswith("cotação "):
-        moeda = mensagem.split(" ")[1].upper()
-        resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)  # Adicionado os argumentos
-        enviar_mensagem_whatsapp(telefone, resposta)
-        return {"status": "OK", "resposta": resposta}
-
-
-    # 📌 Processamento de gastos
-    logger.info("🔍 Tentando processar mensagem como gasto...")
-    
-    descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
-
-    if descricao == "Erro" or valor == 0.0:
-        resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
-        enviar_mensagem_whatsapp(telefone, resposta)
-        return {"status": "ERRO", "resposta": resposta}
-
-    logger.info(
-        "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
-        descricao, valor, categoria, meio_pagamento, parcelas
-    )
-
-    if meio_pagamento in ["pix", "débito"]:
-        salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
-        resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
-    else:
-        salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
-        resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
-
-    enviar_mensagem_whatsapp(telefone, resposta)
-    return {"status": "OK", "resposta": resposta}
+    except Exception as e:
+        logger.exception("❌ Erro ao processar webhook:")
+        return JSONResponse(content={"status": "erro", "mensagem": str(e)}, status_code=500)
 
 def processar_mensagem(mensagem: str):
     """

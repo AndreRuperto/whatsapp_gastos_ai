@@ -5,17 +5,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
+TOKEN = os.getenv("TOKEN_WHATSAPP_CLOUD")
+
 logger = logging.getLogger(__name__)
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
-    logger.info(f"📨 Enviando mensagem para {telefone}: {mensagem}")
-
-    payload = {"number": telefone, "message": mensagem}
-    
-    try:
-        response = requests.post(WHATSAPP_BOT_URL, json=payload)
-        response.raise_for_status()
-        return {"status": "Mensagem enviada"}
-    except requests.exceptions.RequestException as e:
-        logger.exception("❌ Erro ao enviar mensagem via WhatsApp:")
-        return {"status": "Erro ao enviar mensagem", "error": str(e)}
+    url = f"https://graph.facebook.com/v17.0/{PHONE_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": telefone,
+        "type": "text",
+        "text": {"body": mensagem}
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()

@@ -11,7 +11,7 @@ PHONE_ID = os.getenv("PHONE_ID")
 logger = logging.getLogger(__name__)
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
-    url = f"https://graph.facebook.com/v17.0/{PHONE_ID}/messages"
+    url = f"https://graph.facebook.com/v22.0/{PHONE_ID}/messages"
     headers = {
         "Authorization": f"Bearer {TOKEN}",
         "Content-Type": "application/json"

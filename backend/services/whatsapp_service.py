@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 WHATSAPP_BOT_URL = os.getenv("WHATSAPP_BOT_URL")
-TOKEN = os.getenv("TOKEN_WHATSAPP_CLOUD")
+TOKEN = os.getenv("TOKEN")
+PHONE_ID = os.getenv("PHONE_ID")
 
 logger = logging.getLogger(__name__)
 

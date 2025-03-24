@@ -32,6 +32,10 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)
 
+@app.get("/ping")
+def ping():
+    return {"status": "alive!"}
+
 @app.post("/webhook")
 async def receber_mensagem(Body: str = Form(...), From: str = Form(...)):
     mensagem = Body.strip()

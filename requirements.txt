@@ -13,3 +13,4 @@ seaborn==0.13.2
 tqdm==4.66.2
 streamlit==1.32.0
 apscheduler==3.10.4
+httpx>=0.27.0

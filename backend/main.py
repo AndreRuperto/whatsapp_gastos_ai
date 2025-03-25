@@ -47,6 +47,7 @@ async def verify(request: Request):
 
 @app.post("/webhook")
 async def receber_mensagem(request: Request):
+    logger.info("🔥 Recebi algo no webhook!")
     dados = await request.json()
     logger.info("📩 Payload recebido: %s", json.dumps(dados, indent=2))
 

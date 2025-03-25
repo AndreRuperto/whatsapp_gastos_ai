@@ -48,8 +48,15 @@ async def verify(request: Request):
 @app.post("/webhook")
 async def receber_mensagem(request: Request):
     logger.info("🔥 Recebi algo no webhook!")
-    dados = await request.json()
-    logger.info("📩 Payload recebido: %s", json.dumps(dados, indent=2))
+
+    try:
+        dados = await request.json()
+        logger.info("📩 Payload recebido: %s", json.dumps(dados, indent=2))
+    except Exception as e:
+        body = await request.body()
+        logger.error("❌ Erro ao decodificar JSON: %s", str(e))
+        logger.error("📦 Corpo bruto recebido: %s", body.decode("utf-8"))
+        return JSONResponse(content={"status": "erro", "mensagem": "Payload inválido."}, status_code=400)
 
     try:
         mensagens = dados["entry"][0]["changes"][0]["value"].get("messages", [])
@@ -66,24 +73,24 @@ async def receber_mensagem(request: Request):
         if mensagem.lower() == "total gasto no mês?":
             total = calcular_total_gasto()
             resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
-            enviar_mensagem_whatsapp(telefone, resposta)
+            await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem.lower() == "fatura paga!":
             pagar_fatura()
             resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
-            enviar_mensagem_whatsapp(telefone, resposta)
+            await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem.lower() == "cotação":
             resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
-            enviar_mensagem_whatsapp(telefone, resposta)
+            await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem.startswith("cotação "):
             moeda = mensagem.split(" ")[1].upper()
             resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)
-            enviar_mensagem_whatsapp(telefone, resposta)
+            await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
 
         # 📌 Processamento de gastos
@@ -92,7 +99,7 @@ async def receber_mensagem(request: Request):
 
         if descricao == "Erro" or valor == 0.0:
             resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
-            enviar_mensagem_whatsapp(telefone, resposta)
+            await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "ERRO", "resposta": resposta}
 
         logger.info(
@@ -107,7 +114,7 @@ async def receber_mensagem(request: Request):
             salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
             resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
 
-        enviar_mensagem_whatsapp(telefone, resposta)
+        await enviar_mensagem_whatsapp(telefone, resposta)
         return {"status": "OK", "resposta": resposta}
 
     except Exception as e:

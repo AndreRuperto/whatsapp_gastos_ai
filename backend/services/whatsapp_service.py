@@ -1,6 +1,6 @@
-import requests
-import os
 import logging
+import os
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,7 +10,7 @@ PHONE_ID = os.getenv("PHONE_ID")
 
 logger = logging.getLogger(__name__)
 
-def enviar_mensagem_whatsapp(telefone, mensagem):
+async def enviar_mensagem_whatsapp(telefone, mensagem):
     url = f"https://graph.facebook.com/v22.0/{PHONE_ID}/messages"
     headers = {
         "Authorization": f"Bearer {TOKEN}",
@@ -22,5 +22,13 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
         "type": "text",
         "text": {"body": mensagem}
     }
-    response = requests.post(url, headers=headers, json=payload)
-    response.raise_for_status()
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            logger.info("✅ Mensagem enviada com sucesso para %s", telefone)
+    except httpx.HTTPStatusError as exc:
+        logger.error("❌ Erro ao enviar mensagem: %s", exc.response.text)
+    except Exception as e:
+        logger.exception("❌ Erro inesperado ao enviar mensagem:")

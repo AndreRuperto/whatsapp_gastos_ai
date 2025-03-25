@@ -29,7 +29,7 @@ load_dotenv()
 
 app = FastAPI()
 
-VERIFY_TOKEN = "andrezobot"
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)

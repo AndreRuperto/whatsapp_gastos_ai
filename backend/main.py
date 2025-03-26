@@ -78,23 +78,27 @@ async def receber_mensagem(request: Request):
             total = calcular_total_gasto()
             resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
             await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem.lower() == "fatura paga!":
             pagar_fatura()
             resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
             await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem.lower() == "cotação":
             resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
             await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem.startswith("cotação "):
             moeda = mensagem.split(" ")[1].upper()
             resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)
             await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
         # 📌 Processamento de gastos
@@ -104,6 +108,7 @@ async def receber_mensagem(request: Request):
         if descricao == "Erro" or valor == 0.0:
             resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
             await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "ERRO", "resposta": resposta}
 
         logger.info(

@@ -20,11 +20,23 @@ from backend.services.cotacao_service import (
 )
 
 from backend.services.gastos_service import (
-    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario
+    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario, mensagem_ja_processada, registrar_mensagem_recebida 
 )
 
 # Configuração básica de logging
-logging.basicConfig(level=logging.INFO)
+LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Configuração de logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, "app.log"), encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 # Carregar variáveis de ambiente
@@ -90,14 +102,22 @@ async def receber_mensagem(request: Request):
             return JSONResponse(content={"status": "ignorado", "mensagem": "Nenhuma mensagem nova."}, status_code=200)
 
         mensagem_obj = mensagens[0]
-        mensagem = mensagem_obj["text"]["body"]
+        mensagem = mensagem_obj["text"]["body"].strip()
+        mensagem_lower = mensagem.lower()
         telefone = mensagem_obj["from"]
+        mensagem_id = mensagem_obj["id"]
         timestamp_whatsapp = int(mensagem_obj["timestamp"])
 
         logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
-        mensagem = mensagem.strip()
-        mensagem_lower = mensagem.lower()
+        # ✅ Verifica se essa mensagem já foi processada
+        from backend.services.gastos_service import mensagem_ja_processada, registrar_mensagem_recebida
+
+        if mensagem_ja_processada(mensagem_id):
+            logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
+            return JSONResponse(content={"status": "ignorado", "mensagem": "Mensagem duplicada ignorada."}, status_code=200)
+
+        registrar_mensagem_recebida(mensagem_id)
 
         if mensagem_lower == "total gasto no mês?":
             total = calcular_total_gasto()

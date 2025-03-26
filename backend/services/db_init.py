@@ -48,6 +48,14 @@ def inicializar_bd(DATABASE_URL):
         cron TEXT
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mensagens_recebidas (
+            id SERIAL PRIMARY KEY,
+            mensagem_id TEXT UNIQUE,
+            telefone TEXT,
+            data_recebida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     cursor.close()
     conn.close()

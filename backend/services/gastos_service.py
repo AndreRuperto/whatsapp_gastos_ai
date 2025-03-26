@@ -152,3 +152,20 @@ def calcular_datas_fatura(data_compra: str, num_parcelas: int):
         primeiro_vencimento = (primeiro_vencimento.replace(day=1) + timedelta(days=32)).replace(day=6)
 
     return datas_pagamento
+
+def mensagem_ja_processada(mensagem_id: str) -> bool:
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM mensagens_recebidas WHERE mensagem_id = %s", (mensagem_id,))
+    existe = cursor.fetchone() is not None
+    cursor.close()
+    conn.close()
+    return existe
+
+def registrar_mensagem_recebida(mensagem_id: str, telefone: str = ""):
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO mensagens_recebidas (mensagem_id, telefone) VALUES (%s, %s) ON CONFLICT DO NOTHING", (mensagem_id, telefone))
+    conn.commit()
+    cursor.close()
+    conn.close()

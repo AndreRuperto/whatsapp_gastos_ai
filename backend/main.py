@@ -40,6 +40,21 @@ inicializar_bd(DATABASE_URL)
 def ping():
     return {"status": "alive!"}
 
+@app.post("/debug")
+async def debug_route(request: Request):
+    # Lê o corpo da requisição como JSON
+    data = await request.json()
+    
+    # Exibe (print) no console -- mas lembre que em producao
+    # o "print" pode não ser visível. 
+    print("DEBUG - Corpo da requisição:", data)
+    
+    # Também podemos logar com o logger para aparecer no Railway Deploy Logs
+    logger.info(f"DEBUG - Corpo da requisição: {data}")
+    
+    # Retorna uma resposta simples, confirmando que recebeu o JSON
+    return {"status": "ok", "received_data": data}
+
 @app.get("/webhook") # Usado para verificação inicial da Meta
 async def verify(request: Request):
     params = dict(request.query_params)

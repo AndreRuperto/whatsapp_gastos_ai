@@ -7,6 +7,8 @@ import requests
 from dotenv import load_dotenv
 import json
 from fastapi.responses import PlainTextResponse, JSONResponse
+import time
+from datetime import datetime
 
 from backend.services.scheduler import scheduler
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
@@ -47,6 +49,7 @@ async def verify(request: Request):
 
 @app.post("/webhook")
 async def receber_mensagem(request: Request):
+    inicio = time.time()
     logger.info("🔥 Recebi algo no webhook!")
 
     try:
@@ -66,6 +69,7 @@ async def receber_mensagem(request: Request):
         mensagem_obj = mensagens[0]
         mensagem = mensagem_obj["text"]["body"]
         telefone = mensagem_obj["from"]
+        timestamp_whatsapp = int(mensagem_obj["timestamp"])
 
         logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
@@ -115,11 +119,22 @@ async def receber_mensagem(request: Request):
             resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
 
         await enviar_mensagem_whatsapp(telefone, resposta)
+        log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
         return {"status": "OK", "resposta": resposta}
 
     except Exception as e:
         logger.exception("❌ Erro ao processar webhook:")
         return JSONResponse(content={"status": "erro", "mensagem": str(e)}, status_code=500)
+    
+def log_tempos(inicio: float, timestamp_whatsapp: int, logger, mensagem: str, telefone: str):
+    fim = time.time()
+    horario_whatsapp = datetime.fromtimestamp(timestamp_whatsapp).strftime('%Y-%m-%d %H:%M:%S')
+    horario_servidor = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
+    logger.info("⏱️ Timestamp WhatsApp: %s", horario_whatsapp)
+    logger.info("🕒 Timestamp do servidor: %s", horario_servidor)
+    logger.info("⚡ Tempo total de resposta: %.2f segundos", fim - inicio)
 
 def processar_mensagem(mensagem: str):
     """

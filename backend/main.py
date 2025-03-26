@@ -40,6 +40,13 @@ inicializar_bd(DATABASE_URL)
 def ping():
     return {"status": "alive!"}
 
+@app.get("/debug") # Usado para verificação inicial da Meta
+async def verify(request: Request):
+    params = dict(request.query_params)
+    if params.get("hub.mode") == "subscribe" and params.get("hub.verify_token") == VERIFY_TOKEN:
+        return PlainTextResponse(content=params["hub.challenge"])
+    return {"status": "erro", "mensagem": "Token inválido."}
+
 @app.post("/debug")
 async def debug_route(request: Request):
     # Lê o corpo da requisição como JSON

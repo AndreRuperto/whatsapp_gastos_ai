@@ -9,8 +9,9 @@ import json
 from fastapi.responses import PlainTextResponse, JSONResponse
 import time
 from datetime import datetime
+import re
 
-from backend.services.scheduler import scheduler
+from backend.services.scheduler import scheduler, agendar_lembrete_cron
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 from backend.services.db_init import inicializar_bd
 
@@ -95,33 +96,57 @@ async def receber_mensagem(request: Request):
 
         logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
-        # 📌 Comandos específicos
-        if mensagem.lower() == "total gasto no mês?":
+        mensagem = mensagem.strip()
+        mensagem_lower = mensagem.lower()
+
+        if mensagem_lower == "total gasto no mês?":
             total = calcular_total_gasto()
             resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
-        if mensagem.lower() == "fatura paga!":
+        if mensagem_lower == "fatura paga!":
             pagar_fatura()
             resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
-        if mensagem.lower() == "cotação":
+        if mensagem_lower == "cotação":
             resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
-        if mensagem.startswith("cotação "):
-            moeda = mensagem.split(" ")[1].upper()
+        partes = mensagem.split()
+        if len(partes) > 1 and partes[0].lower() == "cotação":
+            moeda = partes[1].upper()
             resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
+
+        if mensagem_lower.startswith("lembrete:") and "cron:" in mensagem_lower:
+            resposta = processar_lembrete_formatado(mensagem, telefone)
+            if resposta:
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "ok"}
+
+        if "tabela de cron" in mensagem_lower:
+            tabela = (
+                "⏰ Exemplos de expressões CRON:\n"
+                "\n* * * * * → Executa a cada minuto\n"
+                "0 9 * * * → Todos os dias às 09:00\n"
+                "30 14 * * * → Todos os dias às 14:30\n"
+                "0 8 * * 1-5 → Segunda a sexta às 08:00\n"
+                "15 10 15 * * → Dia 15 de cada mês às 10:15\n"
+                "0 0 1 1 * → 1º de janeiro à meia-noite\n"
+                "0 18 * * 6 → Todos os sábados às 18:00\n"
+                "\nFormato: minuto hora dia_do_mes mês dia_da_semana"
+            )
+            await enviar_mensagem_whatsapp(telefone, tabela)
+            return {"status": "ok"}
 
         # 📌 Processamento de gastos
         logger.info("🔍 Tentando processar mensagem como gasto...")
@@ -152,6 +177,56 @@ async def receber_mensagem(request: Request):
     except Exception as e:
         logger.exception("❌ Erro ao processar webhook:")
         return JSONResponse(content={"status": "erro", "mensagem": str(e)}, status_code=500)
+
+def descrever_cron_humanamente(expr):
+    minutos, hora, dia, mes, semana = expr.strip().split()
+    partes = []
+
+    dias_semana = {
+        "0": "domingo",
+        "1": "segunda-feira",
+        "2": "terça-feira",
+        "3": "quarta-feira",
+        "4": "quinta-feira",
+        "5": "sexta-feira",
+        "6": "sábado"
+    }
+
+    if semana == "*":
+        partes.append("todos os dias")
+    elif semana in dias_semana:
+        partes.append(f"aos {dias_semana[semana]}")
+    elif semana == "1-5":
+        partes.append("de segunda a sexta-feira")
+    elif semana == "0,6":
+        partes.append("aos fins de semana")
+    elif "," in semana:
+        dias = [dias_semana.get(d, d) for d in semana.split(",")]
+        partes.append("aos " + ", ".join(dias))
+    else:
+        partes.append(f"nos dias da semana: {semana}")
+
+    if dia != "*":
+        partes.append(f"no dia {dia}")
+
+    if mes != "*":
+        partes.append(f"em {mes}")
+
+    partes.append(f"\u00e0s {hora.zfill(2)}h{minutos.zfill(2)}")
+    return " ".join(partes)
+
+
+def processar_lembrete_formatado(mensagem: str, telefone: str):
+
+    padrao = r'lembrete:\s*"(.+?)"\s*cron:\s*([0-9*/,\- ]{5,})'
+    match = re.search(padrao, mensagem.lower())
+    if match:
+        lembrete_texto = match.group(1).strip()
+        cron_expr = match.group(2).strip()
+        agendar_lembrete_cron(telefone, lembrete_texto, cron_expr)
+        descricao = descrever_cron_humanamente(cron_expr)
+        return f"\u23f0 Lembrete agendado com sucesso!\nMensagem: \"{lembrete_texto}\"\nQuando: {descricao}"
+    return None
     
 def log_tempos(inicio: float, timestamp_whatsapp: int, logger, mensagem: str, telefone: str):
     fim = time.time()

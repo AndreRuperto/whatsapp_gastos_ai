@@ -40,6 +40,14 @@ def inicializar_bd(DATABASE_URL):
         data_fim DATE
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS lembretes (
+        id SERIAL PRIMARY KEY,
+        telefone TEXT,
+        mensagem TEXT,
+        cron TEXT
+        )
+    ''')
     conn.commit()
     cursor.close()
     conn.close()

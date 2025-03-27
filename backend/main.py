@@ -20,8 +20,11 @@ from backend.services.cotacao_service import (
 )
 
 from backend.services.gastos_service import (
-    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario, mensagem_ja_processada, registrar_mensagem_recebida 
+    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario, mensagem_ja_processada, registrar_mensagem_recebida, listar_lembretes, apagar_lembrete
 )
+
+from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
+from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
 
 # Configuração básica de logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -110,9 +113,25 @@ async def receber_mensagem(request: Request):
 
         logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
-        # ✅ Verifica se essa mensagem já foi processada
-        from backend.services.gastos_service import mensagem_ja_processada, registrar_mensagem_recebida
+        if not verificar_autorizacao(telefone):
+            logger.warning("🔒 Número não autorizado: %s", telefone)
 
+            # Envia notificação ao ADMIN
+            admin = os.getenv("ADMIN_PHONE")
+            texto_admin = f"🔐 Solicitação de acesso de um novo número:\n{telefone}\n\nDeseja liberar com:\nliberar {telefone}"
+            await enviar_mensagem_whatsapp(admin, texto_admin)
+
+            # Informa ao usuário
+            texto_usuario = "🚫 Seu número ainda não está autorizado a usar o assistente financeiro. Aguarde a liberação."
+            await enviar_mensagem_whatsapp(telefone, texto_usuario)
+
+            return JSONResponse(content={"status": "bloqueado", "mensagem": "Número não autorizado"}, status_code=200)
+        # 🔍 Obtém o schema associado ao telefone
+        schema = obter_schema_por_telefone(telefone)
+        if not schema:
+            logger.error(f"⚠️ Usuário {telefone} sem schema autorizado.")
+            return JSONResponse(content={"status": "erro", "mensagem": "Usuário não possui schema vinculado."}, status_code=403)
+        
         if mensagem_ja_processada(mensagem_id):
             logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
             return JSONResponse(content={"status": "ignorado", "mensagem": "Mensagem duplicada ignorada."}, status_code=200)
@@ -120,14 +139,14 @@ async def receber_mensagem(request: Request):
         registrar_mensagem_recebida(mensagem_id)
 
         if mensagem_lower == "total gasto no mês?":
-            total = calcular_total_gasto()
+            total = calcular_total_gasto(schema)
             resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
         if mensagem_lower == "fatura paga!":
-            pagar_fatura()
+            pagar_fatura(schema)
             resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
@@ -167,6 +186,71 @@ async def receber_mensagem(request: Request):
             )
             await enviar_mensagem_whatsapp(telefone, tabela)
             return {"status": "ok"}
+        if mensagem_lower == "lista lembretes":
+            lembretes = listar_lembretes(telefone, schema)
+            if not lembretes:
+                resposta = "📭 Você ainda não possui lembretes cadastrados."
+            else:
+                resposta = "📋 *Seus lembretes:*\n\n" + "\n".join(
+                    [f"🆔 {l['id']} - \"{l['mensagem']}\"\n⏰ CRON: `{l['cron']}`\n" for l in lembretes]
+                )
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "ok"}
+        if mensagem_lower.startswith("apagar lembrete"):
+            partes = mensagem_lower.split()
+            if len(partes) >= 3 and partes[2].isdigit():
+                id_lembrete = int(partes[2])
+                sucesso = apagar_lembrete(telefone, id_lembrete, schema)
+                resposta = "🗑️ Lembrete apagado com sucesso!" if sucesso else "⚠️ Lembrete não encontrado ou não pertence a você."
+            else:
+                resposta = "❌ Formato inválido. Use: apagar lembrete [ID]"
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "ok"}
+        if mensagem_lower.startswith("liberar "):
+            partes = mensagem.split()
+            if len(partes) >= 3:
+                numero_para_liberar = partes[1]
+                nome_usuario = " ".join(partes[2:])
+                if telefone == os.getenv("ADMIN_PHONE"):
+                    liberar_usuario(numero_para_liberar, nome_usuario)
+                    resposta = f"✅ Número {numero_para_liberar} ({nome_usuario}) autorizado com sucesso!"
+                else:
+                    resposta = "⚠️ Apenas o administrador pode liberar novos usuários."
+            else:
+                resposta = "❌ Formato inválido. Use: liberar [número] [nome]"
+
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+        if mensagem_lower == "lista autorizados":
+            if telefone != os.getenv("ADMIN_PHONE"):
+                await enviar_mensagem_whatsapp(telefone, "⚠️ Apenas o administrador pode acessar essa lista.")
+                return {"status": "acesso negado"}
+
+            usuarios = listar_usuarios_autorizados()
+            if not usuarios:
+                resposta = "📭 Nenhum número autorizado encontrado."
+            else:
+                resposta = "✅ *Usuários autorizados:*\n\n" + "\n".join(
+                    [f"👤 {nome or '(sem nome)'} - {tel}" for nome, tel, _ in usuarios]
+                )
+
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": "lista enviada"}
+        
+        if mensagem_lower.startswith("revogar "):
+            numero_para_revogar = mensagem.split(" ")[1]
+            if telefone == os.getenv("ADMIN_PHONE"):
+                sucesso = revogar_autorizacao(numero_para_revogar)
+                if sucesso:
+                    resposta = f"🚫 Número {numero_para_revogar} teve a autorização revogada com sucesso!"
+                else:
+                    resposta = "⚠️ Número não encontrado ou já está desautorizado."
+            else:
+                resposta = "⚠️ Apenas o administrador pode revogar autorizações."
+
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
 
         # 📌 Processamento de gastos
         logger.info("🔍 Tentando processar mensagem como gasto...")
@@ -184,10 +268,10 @@ async def receber_mensagem(request: Request):
         )
 
         if meio_pagamento in ["pix", "débito"]:
-            salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas)
+            salvar_gasto(descricao, valor, categoria, meio_pagamento, schema, parcelas)
             resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
         else:
-            salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas)
+            salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema)
             resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
 
         await enviar_mensagem_whatsapp(telefone, resposta)
@@ -197,6 +281,24 @@ async def receber_mensagem(request: Request):
     except Exception as e:
         logger.exception("❌ Erro ao processar webhook:")
         return JSONResponse(content={"status": "erro", "mensagem": str(e)}, status_code=500)
+
+def obter_schema_por_telefone(telefone):
+    """
+    Consulta a tabela 'usuarios' e retorna o nome do schema com base no telefone.
+    """
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+    cursor.execute("SELECT nome FROM usuarios WHERE telefone = %s AND autorizado = true", (telefone,))
+    resultado = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if resultado:
+        nome = resultado[0]
+        schema = nome.strip().lower().replace(" ", "_")
+        return schema
+    else:
+        return None
 
 def descrever_cron_humanamente(expr):
     minutos, hora, dia, mes, semana = expr.strip().split()

@@ -10,120 +10,92 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def conectar_bd():
-    """Estabelece conexão com o banco de dados."""
     return psycopg2.connect(DATABASE_URL)
 
-def salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas):
-    """
-    Registra uma compra parcelada na tabela 'fatura_cartao'.
-    """
+def salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema):
     conn = conectar_bd()
     cursor = conn.cursor()
-
-    data_compra = datetime.now().strftime("%Y-%m-%d")  # Pega a data atual da compra
-    datas_fatura = calcular_datas_fatura(data_compra, parcelas)  # Calcula as datas das parcelas
+    data_compra = datetime.now().strftime("%Y-%m-%d")
+    datas_fatura = calcular_datas_fatura(data_compra, parcelas)
 
     for i, data_fim in enumerate(datas_fatura):
         parcela_numero = f"{i+1}/{parcelas}"
-        cursor.execute('''
-            INSERT INTO fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim)
+        cursor.execute(f'''
+            INSERT INTO {schema}.fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', (descricao, valor/parcelas, categoria, meio_pagamento, parcela_numero, data_compra, data_fim))
 
     conn.commit()
     cursor.close()
     conn.close()
-
     print("✅ Fatura registrada com datas corrigidas!")
 
-
-def salvar_gasto(descricao, valor, categoria, meio_pagamento, parcelas=1):
-    """
-    Salva um gasto no banco de dados.
-    
-    Se for débito ou PIX, insere diretamente na tabela 'gastos'.
-    Se for crédito, insere na tabela 'fatura_cartao' e NÃO na tabela 'gastos' até o pagamento da fatura.
-    """
+def salvar_gasto(descricao, valor, categoria, meio_pagamento, schema, parcelas=1):
     conn = conectar_bd()
     cursor = conn.cursor()
 
     if meio_pagamento in ["pix", "débito"]:
-        # Gasto direto, registra na tabela 'gastos'
-        cursor.execute('''
-            INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas)
+        cursor.execute(f'''
+            INSERT INTO {schema}.gastos (descricao, valor, categoria, meio_pagamento, parcelas)
             VALUES (%s, %s, %s, %s, %s)
         ''', (descricao, valor, categoria, meio_pagamento, parcelas))
         logger.info(f"✅ Gasto registrado: {descricao} | R$ {valor:.2f} | {categoria} | {meio_pagamento}")
 
     elif meio_pagamento == "crédito":
-        # Se for crédito, cria as parcelas na tabela 'fatura_cartao'
         data_inicio = datetime.now()
         for parcela in range(1, parcelas + 1):
-            data_fim = (data_inicio + timedelta(days=30 * parcela)).strftime("%Y-%m-%d")  # Ajustando para o próximo mês
-            cursor.execute('''
-                INSERT INTO fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim)
+            data_fim = (data_inicio + timedelta(days=30 * parcela)).strftime("%Y-%m-%d")
+            cursor.execute(f'''
+                INSERT INTO {schema}.fatura_cartao (descricao, valor, categoria, meio_pagamento, parcela, data_inicio, data_fim)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             ''', (descricao, valor / parcelas, categoria, meio_pagamento, f"{parcela}/{parcelas}", data_inicio, data_fim))
-        
         logger.info(f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}")
 
     conn.commit()
     cursor.close()
     conn.close()
 
-def calcular_total_gasto():
-    """
-    Calcula o total gasto no mês atual.
-    """
-    conn = psycopg2.connect(DATABASE_URL)
+def calcular_total_gasto(schema):
+    conn = conectar_bd()
     cursor = conn.cursor()
-    cursor.execute("SELECT SUM(valor) FROM gastos WHERE data >= date_trunc('month', CURRENT_DATE)")
+    cursor.execute(f"""
+        SELECT SUM(valor) FROM {schema}.gastos 
+        WHERE data >= date_trunc('month', CURRENT_DATE)
+    """)
     total = cursor.fetchone()[0] or 0.0
     cursor.close()
     conn.close()
     return total
 
-def pagar_fatura():
-    """
-    Consolida a fatura do cartão e adiciona o valor total na tabela 'gastos'.
-    """
+def pagar_fatura(schema):
     conn = conectar_bd()
     cursor = conn.cursor()
-
-    # Obtém o total da fatura do mês atual
-    cursor.execute('''
-        SELECT SUM(valor) FROM fatura_cartao 
+    cursor.execute(f'''
+        SELECT descricao, valor, categoria, meio_pagamento FROM {schema}.fatura_cartao 
         WHERE DATE_PART('month', data_fim) = DATE_PART('month', CURRENT_DATE)
         AND DATE_PART('year', data_fim) = DATE_PART('year', CURRENT_DATE)
     ''')
-    
-    total_fatura = cursor.fetchone()[0]
-
-    if total_fatura:
-        cursor.execute('''
-            INSERT INTO gastos (descricao, valor, categoria, meio_pagamento, parcelas)
+    registros = cursor.fetchall()
+    for descricao, valor, categoria, meio_pagamento in registros:
+        cursor.execute(f'''
+            INSERT INTO {schema}.gastos (descricao, valor, categoria, meio_pagamento, parcelas)
             VALUES (%s, %s, %s, %s, %s)
-        ''', ("Fatura do Cartão", total_fatura, "Cartão de Crédito", "crédito", 1))
-
-        # Remove os registros da fatura após o pagamento
-        cursor.execute('''
-            DELETE FROM fatura_cartao WHERE DATE_PART('month', data_fim) = DATE_PART('month', CURRENT_DATE)''')
-        
-        logger.info(f"✅ Fatura paga! Total adicionado aos gastos: R$ {total_fatura:.2f}")
-
+        ''', (descricao, valor, categoria, meio_pagamento, 1))
+    cursor.execute(f'''
+        DELETE FROM {schema}.fatura_cartao 
+        WHERE DATE_PART('month', data_fim) = DATE_PART('month', CURRENT_DATE)
+    ''')
     conn.commit()
     cursor.close()
     conn.close()
+    logger.info(f"✅ Fatura paga! Total adicionado aos gastos.")
 
-def registrar_salario(mensagem):
-    """
-    Registra um novo salário no banco de dados.
-    """
+def registrar_salario(mensagem, schema):
     try:
         valor = float(mensagem.split()[-1])
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = conectar_bd()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO salario (valor, data) VALUES (%s, NOW())", (valor,))
+        cursor.execute(f"INSERT INTO {schema}.salario (valor, data) VALUES (%s, NOW())", (valor,))
         conn.commit()
         cursor.close()
         conn.close()
@@ -133,28 +105,16 @@ def registrar_salario(mensagem):
         return {"status": "❌ Erro ao registrar salário"}
 
 def calcular_datas_fatura(data_compra: str, num_parcelas: int):
-    """
-    Calcula as datas de vencimento das parcelas do cartão de crédito.
-
-    - O vencimento da primeira parcela será sempre no mês seguinte à data da compra.
-    - O dia do vencimento será fixo (exemplo: dia 6).
-    - Retorna uma lista de strings no formato 'YYYY-MM-DD'.
-    """
     datas_pagamento = []
-    data_base = datetime.strptime(data_compra, "%Y-%m-%d")  # Converte a data da compra para datetime
-
-    # Define a primeira data de vencimento para o mês seguinte ao da compra
+    data_base = datetime.strptime(data_compra, "%Y-%m-%d")
     primeiro_vencimento = (data_base.replace(day=1) + timedelta(days=32)).replace(day=7)
-
     for parcela in range(num_parcelas):
         datas_pagamento.append(primeiro_vencimento.strftime("%Y-%m-%d"))
-        # Avança para o próximo mês
         primeiro_vencimento = (primeiro_vencimento.replace(day=1) + timedelta(days=32)).replace(day=6)
-
     return datas_pagamento
 
 def mensagem_ja_processada(mensagem_id: str) -> bool:
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = conectar_bd()
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM mensagens_recebidas WHERE mensagem_id = %s", (mensagem_id,))
     existe = cursor.fetchone() is not None
@@ -163,9 +123,28 @@ def mensagem_ja_processada(mensagem_id: str) -> bool:
     return existe
 
 def registrar_mensagem_recebida(mensagem_id: str, telefone: str = ""):
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = conectar_bd()
     cursor = conn.cursor()
     cursor.execute("INSERT INTO mensagens_recebidas (mensagem_id, telefone) VALUES (%s, %s) ON CONFLICT DO NOTHING", (mensagem_id, telefone))
     conn.commit()
     cursor.close()
     conn.close()
+
+def listar_lembretes(telefone, schema):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT id, mensagem, cron FROM {schema}.lembretes WHERE telefone = %s", (telefone,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [{"id": row[0], "mensagem": row[1], "cron": row[2]} for row in rows]
+
+def apagar_lembrete(telefone, lembrete_id, schema):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute(f"DELETE FROM {schema}.lembretes WHERE id = %s AND telefone = %s", (lembrete_id, telefone))
+    sucesso = cursor.rowcount > 0
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return sucesso

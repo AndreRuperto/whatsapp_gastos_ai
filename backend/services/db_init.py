@@ -42,10 +42,11 @@ def inicializar_bd(DATABASE_URL):
     ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS lembretes (
-        id SERIAL PRIMARY KEY,
-        telefone TEXT,
-        mensagem TEXT,
-        cron TEXT
+            id SERIAL PRIMARY KEY,
+            telefone TEXT,
+            mensagem TEXT,
+            cron TEXT,
+            data_inclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     cursor.execute('''
@@ -54,6 +55,15 @@ def inicializar_bd(DATABASE_URL):
             mensagem_id TEXT UNIQUE,
             telefone TEXT,
             data_recebida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            nome TEXT,
+            telefone TEXT UNIQUE,
+            autorizado BOOLEAN DEFAULT false,
+            data_inclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()

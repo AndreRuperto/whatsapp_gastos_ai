@@ -105,7 +105,24 @@ async def receber_mensagem(request: Request):
             return JSONResponse(content={"status": "ignorado", "mensagem": "Nenhuma mensagem nova."}, status_code=200)
 
         mensagem_obj = mensagens[0]
-        mensagem = mensagem_obj["text"]["body"].strip()
+
+        # 🛡️ Proteção contra mensagens sem campo 'text'
+        try:
+            mensagem = mensagem_obj["text"]["body"].strip()
+        except KeyError:
+            tipo_mensagem = mensagem_obj.get("type", "desconhecido")
+            telefone = mensagem_obj.get("from", "desconhecido")
+            logger.warning(f"⚠️ Mensagem sem campo 'text'. Tipo: {tipo_mensagem}")
+            logger.warning(f"📦 Conteúdo bruto da mensagem: {json.dumps(mensagem_obj, indent=2)}")
+            await enviar_mensagem_whatsapp(
+                telefone,
+                "🚫 Sua mensagem não pôde ser processada. Envie um texto simples como 'oi' ou 'cotação'."
+            )
+            return JSONResponse(
+                content={"status": "ignorado", "mensagem": "Tipo de mensagem não suportado"},
+                status_code=200
+            )
+
         mensagem_lower = mensagem.lower()
         telefone = mensagem_obj["from"]
         mensagem_id = mensagem_obj["id"]
@@ -126,6 +143,7 @@ async def receber_mensagem(request: Request):
             await enviar_mensagem_whatsapp(telefone, texto_usuario)
 
             return JSONResponse(content={"status": "bloqueado", "mensagem": "Número não autorizado"}, status_code=200)
+
         # 🔍 Obtém o schema associado ao telefone
         schema = obter_schema_por_telefone(telefone)
         if not schema:

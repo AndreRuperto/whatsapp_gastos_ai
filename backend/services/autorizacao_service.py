@@ -20,15 +20,15 @@ def liberar_usuario(telefone, nome):
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 
+    schema = nome.lower().replace(" ", "_")
     # 1. Inserir na tabela usuarios
     cursor.execute("""
-        INSERT INTO usuarios (telefone, autorizado, nome)
-        VALUES (%s, true, %s)
+        INSERT INTO usuarios (nome, telefone, schema_user, autorizado)
+        VALUES (%s, %s, %s, true)
         ON CONFLICT (telefone) DO UPDATE SET autorizado = true, nome = EXCLUDED.nome
-    """, (telefone, nome))
+    """, (telefone, nome, schema))
 
     # 2. Criar schema com base no nome (transforma em minúsculo e remove espaços)
-    schema = nome.lower().replace(" ", "_")
     cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
 
     # 3. Criar tabelas dentro do schema

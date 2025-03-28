@@ -15,8 +15,8 @@ from backend.services.scheduler import scheduler, agendar_lembrete_cron
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
 from backend.services.db_init import inicializar_bd
 
-from backend.services.cotacao_service import (
-    obter_cotacao_principais, obter_cotacao, MOEDAS, MOEDA_EMOJIS
+from backend.services.api_service import (
+    obter_cotacao_principais, obter_cotacao, buscar_cep, listar_moedas_disponiveis, listar_conversoes_disponiveis, listar_conversoes_disponiveis_moeda, MOEDAS, CONVERSOES, MOEDA_EMOJIS
 )
 
 from backend.services.gastos_service import (
@@ -156,41 +156,84 @@ async def receber_mensagem(request: Request):
 
         registrar_mensagem_recebida(mensagem_id)
 
-        if mensagem_lower == "total gasto no mês?":
+        partes = mensagem.split()
+        if mensagem_lower == "total gasto":
             total = calcular_total_gasto(schema)
             resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
-        if mensagem_lower == "fatura paga!":
+        elif mensagem_lower == "fatura paga!":
             pagar_fatura(schema)
             resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
+        
+        elif mensagem_lower.startswith("cep "):
+            partes = mensagem.split()
+            if len(partes) == 2 and partes[1].isdigit():
+                cep = partes[1]
+                resposta = buscar_cep(cep)
+            else:
+                resposta = "❌ Formato inválido. Use: `cep 05424020` (apenas números)."
 
-        if mensagem_lower == "cotação":
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
+        elif mensagem_lower == "cotação":
             resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
-
-        partes = mensagem.split()
-        if len(partes) > 1 and partes[0].lower() == "cotação":
-            moeda = partes[1].upper()
-            resposta = obter_cotacao(API_COTACAO, moeda, MOEDAS)
+        
+        elif mensagem_lower.startswith("cotação") and ("-" in mensagem_lower or len(partes) == 2):
+            moeda_origem = partes[1].upper()
+            resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem)
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
+        
+        elif mensagem_lower.startswith("cotação") and ("-" in mensagem_lower or len(partes) > 2):
+            moeda_origem = partes[1].upper()
+            moeda_destino = partes[3].upper()
+            resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem, moeda_destino)
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+            return {"status": "OK", "resposta": resposta}
+        
+        elif mensagem_lower == "listar moedas":
+            resposta = listar_moedas_disponiveis(MOEDAS)
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
 
-        if mensagem_lower.startswith("lembrete:") and "cron:" in mensagem_lower:
+        elif mensagem_lower == "listar conversoes":
+            resposta = listar_conversoes_disponiveis(CONVERSOES)
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+        elif mensagem_lower.startswith("conversoes "):
+            partes = mensagem.split()
+            if len(partes) == 2:
+                moeda = partes[1].upper()
+                if moeda in CONVERSOES:
+                    resposta = listar_conversoes_disponiveis_moeda(CONVERSOES, moeda)
+                else:
+                    resposta = f"⚠️ Moeda '{moeda}' não encontrada ou não tem conversões disponíveis."
+            else:
+                resposta = "❌ Formato inválido. Use: conversoes [moeda]"
+
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+
+
+        elif mensagem_lower.startswith("lembrete:") and "cron:" in mensagem_lower:
             resposta = processar_lembrete_formatado(mensagem, telefone)
             if resposta:
                 await enviar_mensagem_whatsapp(telefone, resposta)
                 return {"status": "ok"}
 
-        if "tabela de cron" in mensagem_lower:
+        elif mensagem_lower == "tabela cron":
             tabela = (
                 "⏰ Exemplos de expressões CRON:\n"
                 "\n* * * * * → Executa a cada minuto\n"
@@ -204,7 +247,7 @@ async def receber_mensagem(request: Request):
             )
             await enviar_mensagem_whatsapp(telefone, tabela)
             return {"status": "ok"}
-        if mensagem_lower == "lista lembretes":
+        elif mensagem_lower == "lista lembretes":
             lembretes = listar_lembretes(telefone, schema)
             if not lembretes:
                 resposta = "📭 Você ainda não possui lembretes cadastrados."
@@ -214,7 +257,7 @@ async def receber_mensagem(request: Request):
                 )
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "ok"}
-        if mensagem_lower.startswith("apagar lembrete"):
+        elif mensagem_lower.startswith("apagar lembrete"):
             partes = mensagem_lower.split()
             if len(partes) >= 3 and partes[2].isdigit():
                 id_lembrete = int(partes[2])
@@ -224,14 +267,27 @@ async def receber_mensagem(request: Request):
                 resposta = "❌ Formato inválido. Use: apagar lembrete [ID]"
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "ok"}
-        if mensagem_lower.startswith("liberar "):
+        elif mensagem_lower.startswith("liberar "):
             partes = mensagem.split()
             if len(partes) >= 3:
                 numero_para_liberar = partes[1]
                 nome_usuario = " ".join(partes[2:])
                 if telefone == os.getenv("ADMIN_PHONE"):
-                    liberar_usuario(numero_para_liberar, nome_usuario)
-                    resposta = f"✅ Número {numero_para_liberar} ({nome_usuario}) autorizado com sucesso!"
+                    try:
+                        liberar_usuario(numero_para_liberar, nome_usuario)
+                        resposta = f"✅ Número {numero_para_liberar} ({nome_usuario}) autorizado com sucesso!"
+
+                        # ✅ Envia mensagem para o novo usuário liberado
+                        texto_bem_vindo = (
+                            f"🎉 Olá usuário!\n"
+                            f"Seu número foi autorizado e agora você pode usar o assistente financeiro via WhatsApp. "
+                            f"Digite 'ajuda' para ver os comandos disponíveis."
+                        )
+                        await enviar_mensagem_whatsapp(numero_para_liberar, texto_bem_vindo)
+
+                    except Exception as e:
+                        logger.error("❌ Erro ao liberar usuário: %s", str(e))
+                        resposta = f"❌ Erro ao autorizar o número: {e}"
                 else:
                     resposta = "⚠️ Apenas o administrador pode liberar novos usuários."
             else:
@@ -239,7 +295,28 @@ async def receber_mensagem(request: Request):
 
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
-        if mensagem_lower == "lista autorizados":
+        elif mensagem_lower.startswith("não liberar "):
+            partes = mensagem.split()
+            if len(partes) >= 2:
+                numero_negado = partes[2] if len(partes) >= 3 else partes[1]
+                if telefone == os.getenv("ADMIN_PHONE"):
+                    # Mensagem para o admin (confirmação)
+                    resposta = f"🚫 Número {numero_negado} não foi autorizado."
+
+                    # Mensagem para o usuário negado
+                    texto_usuario = (
+                        "🚫 Seu número **não foi autorizado** a usar o assistente financeiro no momento. "
+                        "Em caso de dúvidas, entre em contato com o administrador."
+                    )
+                    await enviar_mensagem_whatsapp(numero_negado, texto_usuario)
+                else:
+                    resposta = "⚠️ Apenas o administrador pode negar autorizações."
+            else:
+                resposta = "❌ Formato inválido. Use: não liberar [número]"
+
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "resposta": resposta}
+        elif mensagem_lower == "lista usuarios":
             if telefone != os.getenv("ADMIN_PHONE"):
                 await enviar_mensagem_whatsapp(telefone, "⚠️ Apenas o administrador pode acessar essa lista.")
                 return {"status": "acesso negado"}
@@ -255,7 +332,7 @@ async def receber_mensagem(request: Request):
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": "lista enviada"}
         
-        if mensagem_lower.startswith("revogar "):
+        elif mensagem_lower.startswith("revogar "):
             numero_para_revogar = mensagem.split(" ")[1]
             if telefone == os.getenv("ADMIN_PHONE"):
                 sucesso = revogar_autorizacao(numero_para_revogar)
@@ -269,32 +346,36 @@ async def receber_mensagem(request: Request):
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
 
+        elif (
+            any(char.isdigit() for char in mensagem)
+            and " " in mensagem
+            and "cep" not in mensagem_lower
+            and not (len(mensagem.split()) >= 2 and mensagem.split()[1].startswith("55"))
+        ):
+            descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
 
-        # 📌 Processamento de gastos
-        logger.info("🔍 Tentando processar mensagem como gasto...")
-        descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
+            logger.info(
+                "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
+                descricao, valor, categoria, meio_pagamento, parcelas
+            )
 
-        if descricao == "Erro" or valor == 0.0:
-            resposta = "⚠️ Não entendi sua mensagem. Tente informar o gasto no formato: 'Lanche 30' ou 'Uber 25 crédito'."
+            if meio_pagamento in ["pix", "débito"]:
+                salvar_gasto(descricao, valor, categoria, meio_pagamento, schema, parcelas)
+                resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
+            else:
+                salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema)
+                resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
+
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "ERRO", "resposta": resposta}
-
-        logger.info(
-            "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
-            descricao, valor, categoria, meio_pagamento, parcelas
-        )
-
-        if meio_pagamento in ["pix", "débito"]:
-            salvar_gasto(descricao, valor, categoria, meio_pagamento, schema, parcelas)
-            resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
+            return {"status": "OK", "resposta": resposta}
         else:
-            salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema)
-            resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
-
-        await enviar_mensagem_whatsapp(telefone, resposta)
-        log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-        return {"status": "OK", "resposta": resposta}
+            resposta = (
+                "⚠️ Comando não reconhecido.\n"
+                "Digite *ajuda* para ver a lista de comandos disponíveis."
+            )
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "comando inválido", "resposta": resposta}
 
     except Exception as e:
         logger.exception("❌ Erro ao processar webhook:")

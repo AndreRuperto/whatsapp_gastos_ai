@@ -14,22 +14,18 @@ st.set_page_config(page_title="Dashboard Financeiro", layout="wide")
 st.title("📊 Dashboard de Gastos - WhatsApp AI")
 st.markdown("---")
 
-# query_params = st.query_params
-# phone = query_params.get("phone", [None])[0]
-# token = query_params.get("token", [None])[0]
-
-# # Fallback se vier quebrado
-# if phone and len(phone) < 10:
-#     full_url = st.get_page_url()
-#     parsed_url = urllib.parse.urlparse(full_url)
-#     qs = urllib.parse.parse_qs(parsed_url.query)
-
-#     phone = qs.get("phone", [None])[0]
-#     token = qs.get("token", [None])[0]
-
 query_params = st.query_params
 phone = query_params.get("phone", [None])[0]
 token = query_params.get("token", [None])[0]
+
+# Fallback se vier quebrado
+if phone and len(phone) < 10:
+    full_url = st.get_page_url()
+    parsed_url = urllib.parse.urlparse(full_url)
+    qs = urllib.parse.parse_qs(parsed_url.query)
+
+    phone = qs.get("phone", [None])[0]
+    token = qs.get("token", [None])[0]
 
 resultado = validar_token(phone, token)
 if not resultado:

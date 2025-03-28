@@ -25,7 +25,7 @@ from backend.services.gastos_service import (
 
 from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
 from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
-from services.token_service import gerar_token_acesso
+from backend.services.token_service import gerar_token_acesso
 
 # Configuração básica de logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")

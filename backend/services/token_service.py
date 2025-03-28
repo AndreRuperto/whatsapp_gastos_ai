@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta
-from backend.services.db_init import conectar_bd  
+from .db_init import conectar_bd
 
 def gerar_token_acesso(phone: str, schema: str) -> tuple[str, datetime]:
     token = secrets.token_urlsafe(16)

@@ -183,22 +183,16 @@ async def receber_mensagem(request: Request):
             return {"status": "OK", "resposta": resposta}
         
         elif mensagem_lower == "gráficos":
-            token_info = gerar_token_acesso(telefone, schema)
-            if not token_info:
-                resposta = "❌ Erro ao gerar seu link de acesso aos gráficos. Tente novamente mais tarde."
-            else:
-                token = token_info["token"]
-                expira_em = token_info["expira_em"]
-                link = f"https://dashboard-financas.up.railway.app/?phone={telefone}&token={token}"
-                resposta = (
-                    f"📊 *Seu link personalizado para visualizar os gráficos:*\n\n"
-                    f"{link}\n\n"
-                    f"⚠️ O link é válido por 30 minutos (até as *{expira_em.strftime('%H:%M')}*).\n"
-                    f"Depois disso, será necessário gerar um novo link digitando 'gráficos' novamente."
-                )
+            token_info = gerar_token_acesso(telefone)
+            token = token_info["token"]
+            expira_em = token_info["expira_em"]
 
+            resposta = (
+                "📊 Aqui está o seu link com os gráficos financeiros!\n\n"
+                f"🔗 https://dashboard-financas.up.railway.app/?phone={telefone}&token={token}\n"
+                f"⚠️ O link é válido até às {expira_em.strftime('%H:%M')} por segurança."
+            )
             await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
 
         elif mensagem_lower.startswith("cep "):

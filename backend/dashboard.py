@@ -3,6 +3,8 @@ import pandas as pd
 import psycopg2
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import pytz
 from services.token_service import validar_token
 
 load_dotenv()
@@ -15,10 +17,27 @@ query_params = st.query_params
 phone = query_params.get("phone", [None])[0]
 token = query_params.get("token", [None])[0]
 
-schema = validar_token(phone, token)
-if not schema:
+resultado = validar_token(phone, token)
+if not resultado:
     st.error("🔒 Link inválido ou expirado. Solicite um novo link.")
     st.stop()
+
+schema, expira_em = resultado
+
+# 🎯 Mostrar alerta de expiração
+fuso_brasilia = pytz.timezone("America/Sao_Paulo")
+agora = datetime.now(fuso_brasilia)
+
+minutos_restantes = int((expira_em - agora).total_seconds() // 60)
+expira_formatado = expira_em.strftime("%H:%M")
+
+if minutos_restantes <= 0:
+    st.error("❌ Este link já expirou. Por favor, solicite um novo.")
+    st.stop()
+elif minutos_restantes <= 5:
+    st.warning(f"⚠️ Seu link expira em {minutos_restantes} minutos (às {expira_formatado}). Salve os dados se necessário.")
+else:
+    st.info(f"🔐 Link válido até às {expira_formatado} (horário de Brasília).")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL)
@@ -34,6 +53,7 @@ if categoria != "Todas":
 
 st.subheader("📅 Gastos ao longo do tempo")
 df["data"] = pd.to_datetime(df["data"])
+df = df.copy()
 df.set_index("data", inplace=True)
 st.line_chart(df["valor"])
 
@@ -42,6 +62,7 @@ chart_data = df.groupby("categoria")["valor"].sum().reset_index()
 st.bar_chart(chart_data, x="categoria", y="valor")
 
 df.to_csv("gastos.csv", index=False)
-st.download_button(label="📥 Baixar CSV", data=open("gastos.csv", "rb"), file_name="gastos.csv", mime="text/csv")
+with open("gastos.csv", "rb") as f:
+    st.download_button(label="📥 Baixar CSV", data=f, file_name="gastos.csv", mime="text/csv")
 
 conn.close()

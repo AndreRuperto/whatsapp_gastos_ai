@@ -1,9 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import secrets
 from .db_init import conectar_bd
+import pytz  # <- você pode adicionar ao requirements.txt
 
 def gerar_token_acesso(telefone: str) -> dict:
-    agora = datetime.now(timezone.utc)
+    fuso_brasilia = pytz.timezone("America/Sao_Paulo")
+    agora = datetime.now(fuso_brasilia)
     expira_em = agora + timedelta(minutes=30)
     token = secrets.token_urlsafe(16)
 
@@ -22,7 +24,7 @@ def gerar_token_acesso(telefone: str) -> dict:
     schema = resultado[0]
 
     # 🧹 Limpar tokens expirados
-    cursor.execute("DELETE FROM tokens_ativos WHERE expira_em < NOW()")
+    cursor.execute("DELETE FROM tokens_ativos WHERE expira_em < (NOW() AT TIME ZONE 'America/Sao_Paulo')")
 
     # 🆕 Inserir token
     cursor.execute("""
@@ -44,17 +46,26 @@ def validar_token(telefone: str, token: str) -> tuple[str, datetime] | None:
     conn = conectar_bd()
     cursor = conn.cursor()
 
+    print("🔍 Validando token...")
+    print("📲 Telefone:", telefone)
+    print("🔐 Token:", token)
+
     cursor.execute(
         """
         SELECT schema, expira_em FROM tokens_ativos
-        WHERE telefone = %s AND token = %s AND expira_em > NOW()
+        WHERE telefone = %s
+        AND token = %s
+        AND expira_em > (NOW() AT TIME ZONE 'America/Sao_Paulo')
         """,
         (telefone, token)
     )
+
     resultado = cursor.fetchone()
+    print("📤 Resultado da query:", resultado)
+
     cursor.close()
     conn.close()
 
     if resultado:
-        return resultado[0], resultado[1]  # schema, expira_em
+        return resultado[0], resultado[1]
     return None

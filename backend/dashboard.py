@@ -24,9 +24,10 @@ if not resultado:
 
 schema, expira_em = resultado
 
-# 🎯 Mostrar alerta de expiração
+# 🎯 Alerta de expiração com fuso de Brasília
 fuso_brasilia = pytz.timezone("America/Sao_Paulo")
 agora = datetime.now(fuso_brasilia)
+expira_em = expira_em.astimezone(fuso_brasilia)  # ✅ exibição no fuso correto
 
 minutos_restantes = int((expira_em - agora).total_seconds() // 60)
 expira_formatado = expira_em.strftime("%H:%M")

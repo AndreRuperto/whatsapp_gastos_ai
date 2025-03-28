@@ -4,8 +4,7 @@ import datetime
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from services.db_init import conectar_bd, inicializar_bd
-
+from backend.services.db_init import conectar_bd, inicializar_bd
 
 load_dotenv()
 logger = logging.getLogger(__name__)

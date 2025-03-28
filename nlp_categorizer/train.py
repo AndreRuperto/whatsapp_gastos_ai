@@ -1,75 +1,69 @@
-import spacy
 import json
-import random
-from spacy.training import Example
-from tqdm import tqdm
-from spacy.util import minibatch
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report
 
-def load_data(filename):
-    """Carrega os dados do JSON e retorna no formato necessário para treinamento"""
-    with open(filename, "r", encoding="utf-8") as f:
-        data = json.load(f)
+# Carregar os dados do arquivo JSON
+with open("data/train_data_oic.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
 
-    train_data = []
-    for item in data:
-        if "text" in item and "cats" in item:
-            train_data.append((item["text"], {"cats": item["cats"]}))
-    return train_data
+# Converter para DataFrame
+df = pd.DataFrame(data)
 
-def train_model(train_data, iterations=20, batch_size=16, early_stopping=3):
-    """Treina o modelo de NLP do spaCy com os dados fornecidos"""
-    nlp = spacy.load("pt_core_news_lg")  # Modelo maior melhora embeddings
+# Separar dados e rótulos
+X = df["text"]
+y = df["intent"]
 
-    # Adiciona o pipeline de categorização de texto
-    if "textcat" in nlp.pipe_names:
-        nlp.remove_pipe("textcat")
+# Separar em treino e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    textcat = nlp.add_pipe("textcat", last=True)
+# Criar pipeline com TF-IDF + Classificador
+pipeline = Pipeline([
+    ("tfidf", TfidfVectorizer()),
+    ("clf", LogisticRegression(max_iter=1000))
+])
 
-    # Adiciona categorias dinamicamente
-    labels = {cat for _, annotations in train_data for cat in annotations["cats"]}
-    for label in labels:
-        textcat.add_label(label)
+# Treinar modelo
+pipeline.fit(X_train, y_train)
 
-    optimizer = nlp.begin_training()
+# Avaliar modelo
+y_pred = pipeline.predict(X_test)
+relatorio = classification_report(y_test, y_pred, output_dict=True)
 
-    print("\n🚀 Iniciando treinamento...\n")
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-    best_loss = float("inf")
-    patience = 0
+# Mostrar matriz de confusão como exemplo de visualização
+from sklearn.metrics import confusion_matrix
 
-    for i in range(iterations):
-        random.shuffle(train_data)
-        losses = {}
+conf_matrix = confusion_matrix(y_test, y_pred, labels=pipeline.classes_)
+conf_df = pd.DataFrame(conf_matrix, index=pipeline.classes_, columns=pipeline.classes_)
 
-        batches = minibatch(train_data, size=batch_size)
+import seaborn as sns
+import matplotlib.pyplot as plt
+import io
 
-        with tqdm(total=len(train_data) // batch_size, desc=f"Iteração {i+1}/{iterations}") as pbar:
-            for batch in batches:
-                examples = [Example.from_dict(nlp.make_doc(text), annotation) for text, annotation in batch]
-                nlp.update(examples, sgd=optimizer, losses=losses)
-                pbar.update(1)
+# Criar figura
+plt.figure(figsize=(12, 10))
+sns.heatmap(conf_df, annot=True, fmt="d", cmap="Blues")
+plt.title("Matriz de Confusão por Categoria")
+plt.ylabel("Real")
+plt.xlabel("Previsto")
+plt.tight_layout()
 
-        print(f"📉 Iteração {i+1} - Losses: {losses}")
+# Salvar imagem
+image_path = "data/matriz_confusao.png"
+plt.savefig(image_path)
+plt.close()
 
-        # Parada antecipada se o loss não melhorar
-        if losses["textcat"] >= best_loss:
-            patience += 1
-            if patience >= early_stopping:
-                print(f"\n⏹️ Early stopping ativado após {patience} iterações sem melhoria!\n")
-                break
-        else:
-            best_loss = losses["textcat"]
-            patience = 0
+# Exibir uma previsão de exemplo
+exemplo = "Uber 40"
+pred_exemplo = pipeline.predict([exemplo])[0]
 
-    return nlp
+# Retornar informações para o usuário
+relatorio_geral = classification_report(y_test, y_pred)
 
-if __name__ == "__main__":
-    data = load_data("data/train_data_v2.json")
-    
-    if not data:
-        print("❌ Erro: Nenhum dado foi carregado!")
-    else:
-        nlp_model = train_model(data, iterations=50, batch_size=16, early_stopping=5)  # Configuração ajustada
-        nlp_model.to_disk("model_spacy")
-        print("\n✅ Modelo treinado e salvo em 'model_spacy' 🎉")
+(image_path, exemplo, pred_exemplo, relatorio_geral)

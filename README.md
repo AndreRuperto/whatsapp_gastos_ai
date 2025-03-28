@@ -1,153 +1,285 @@
-# 📌 WhatsApp Gastos AI
-**Sistema de controle de gastos via WhatsApp, integrado com Twilio e armazenado no PostgreSQL (Railway).** 🚀  
+📚 README.md - Bot Financeiro via WhatsApp
 
----
+Um projeto completo e funcional de um Assistente Financeiro Inteligente via WhatsApp, desenvolvido com FastAPI, PostgreSQL e integração oficial com a WhatsApp Cloud API. Automatize a gestão dos seus gastos, controle faturas, receba cotações de moedas e configure lembretes personalizados — tudo através de mensagens no WhatsApp.
 
-## **📖 Visão Geral**
-Este projeto permite que usuários registrem seus gastos diretamente via **WhatsApp**, armazenando os dados em um **banco de dados PostgreSQL** hospedado no **Railway**. 
+Deploy feito com Railway, com banco de dados e servidor integrados na nuvem.
 
-✅ **Mensagens no WhatsApp** → ✅ **Webhook do Twilio** → ✅ **FastAPI** → ✅ **Banco de Dados (PostgreSQL no Railway)**
+🔧 Tecnologias Utilizadas
 
-Os usuários podem enviar mensagens como:
-```
-Almoço 25.90
-Uber 15.00
-Mercado 120.50
-```
-E receberão uma confirmação automática:
-```
-Gasto de R$25.90 em 'Alimentação' registrado com sucesso!
-```
+Tecnologia
 
-Também é possível perguntar:
-```
-Total gasto no mês?
-```
-E o bot retorna o valor total gasto no mês.
+Função
 
----
+FastAPI
 
-## **🛠️ Tecnologias Utilizadas**
-- **Python** + **FastAPI** (Backend)
-- **Twilio API** (Integração com WhatsApp)
-- **PostgreSQL** (Banco de dados no Railway)
-- **Railway** (Deploy da API e banco de dados)
-- **Ngrok** (Para testes locais do webhook)
-- **Uvicorn** (Servidor ASGI)
+Backend moderno, assíncrono e com rotas elegantes
 
----
+PostgreSQL
 
-## **🚀 Como Rodar o Projeto?**
+Armazenamento dos dados financeiros, faturas, lembretes e salários
 
-### **1️⃣ Clonar o Repositório**
-```bash
-git clone https://github.com/seu-usuario/whatsapp_gastos_ai.git
-cd whatsapp_gastos_ai
-```
+Railway
 
-### **2️⃣ Criar e Ativar um Ambiente Virtual**
-```bash
-python -m venv venv
-# Ativar no Windows
-venv\Scripts\activate
-# Ativar no Linux/macOS
-source venv/bin/activate
-```
+Infraestrutura em nuvem para API + banco de dados
 
-### **3️⃣ Instalar as Dependências**
-```bash
-pip install -r requirements.txt
-```
+WhatsApp Cloud API
 
-### **4️⃣ Criar o Arquivo `.env`**
-Crie um arquivo `.env` na raiz do projeto e adicione suas credenciais:
-```
-TWILIO_ACCOUNT_SID=seu_sid_aqui
-TWILIO_AUTH_TOKEN=seu_auth_token_aqui
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-DATABASE_URL=postgresql://usuario:senha@host:porta/database
-```
+Integração direta com o WhatsApp Oficial (via Meta)
 
-**Obs:** No Railway, essas variáveis já foram configuradas via **"Shared Variables"**.
+APScheduler
 
----
+Agendamento de mensagens com suporte a expressões CRON
 
-## **🌐 Como Configurar o Webhook no Twilio**
-1️⃣ Acesse [Twilio Console](https://www.twilio.com/console).  
-2️⃣ Vá para **Messaging** > **Sandbox for WhatsApp**.  
-3️⃣ No campo **"When a message comes in"**, adicione sua API pública do Railway:  
-   ```
-   https://whatsappgastosai-production.up.railway.app/webhook
-   ```
-4️⃣ Defina **Method** como **POST**.  
-5️⃣ Clique em **Save**.  
+httpx / requests
 
----
+Requisições externas para APIs e chamadas assíncronas
 
-## **▶️ Como Iniciar o Servidor Localmente**
-```bash
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-```
-Agora você pode testar no navegador:
-```
-http://127.0.0.1:8000/docs
-```
+dotenv
 
----
+Gerenciamento de variáveis sensíveis via .env
 
-## **🚀 Como Rodar no Railway?**
+📁 Estrutura de Pastas
 
-### **1️⃣ Criar uma conta no Railway**
-Caso ainda não tenha, crie uma conta gratuita no [Railway](https://railway.app/).  
+.
+├── backend
+│   ├── main.py                  # Arquivo principal com as rotas da API (Webhook)
+│   ├── services
+│   │   ├── whatsapp_service.py  # Envio de mensagens e conexão com a API do WhatsApp
+│   │   ├── cotacao_service.py   # Consome a AwesomeAPI para cotações de moedas
+│   │   ├── gastos_service.py    # Processa, classifica e registra gastos e faturas
+│   │   ├── scheduler.py         # Gerenciador de lembretes com cron
+│   │   └── db_init.py           # Criação automática das tabelas no PostgreSQL
+├── .env                         # Variáveis de ambiente como token e banco
 
-### **2️⃣ Criar um novo projeto**
-1. Acesse [Railway](https://railway.app/dashboard)
-2. Clique em **"New Project"** e selecione **"Deploy from GitHub"**
-3. Conecte o Railway ao repositório do **whatsapp_gastos_ai**
-4. Aguarde a inicialização do serviço
+💬 Funcionalidades Disponíveis via WhatsApp
 
-### **3️⃣ Configurar as Variáveis de Ambiente**
-1. No Railway, acesse a aba **"Variables"**
-2. Adicione as seguintes variáveis:
-   ```
-   TWILIO_ACCOUNT_SID=seu_sid
-   TWILIO_AUTH_TOKEN=seu_auth_token
-   TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-   DATABASE_URL=postgresql://usuario:senha@host:porta/database
-   ```
-3. Salve as alterações
+🔹 Registro Inteligente de Gastos
 
-### **4️⃣ Criar um Banco de Dados no Railway**
-1. No dashboard do Railway, clique em **"New Service"**
-2. Escolha **PostgreSQL**
-3. Copie a **DATABASE_URL** gerada e adicione às variáveis de ambiente
+Reconhece mensagens como mercado 120 pix, uber 40 crédito, tv 600 crédito 10x
 
-### **5️⃣ Criar o arquivo `Procfile`**
-O `Procfile` indica ao Railway como rodar o servidor:
-```
-web: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
-```
+Divide em:
 
-### **6️⃣ Fazer o Deploy**
-Se tudo estiver configurado corretamente, o Railway **detectará automaticamente** o projeto e iniciará o deploy.
-Caso precise forçar um deploy manualmente:
-```bash
-railway up
-```
+Descrição (ex: "tv")
 
-### **7️⃣ Acessar a API pública no Railway**
-Após o deploy, o Railway gera um domínio público:
-```
-https://whatsappgastosai-production.up.railway.app/docs
-```
-Esse link pode ser usado para testar a API no navegador.
+Valor (float)
 
----
+Meio de pagamento (pix, débito, crédito)
 
-## **📊 Próximos Passos**
-- 📌 Criar um **dashboard interativo** com os gastos 📊
-- 📌 Implementar **gráficos de categorias** de gastos 🎯
-- 📌 Enviar **alertas de gastos altos** via WhatsApp 📲
-- 📌 Adicionar **relatórios mensais automáticos** 📝
+Parcelas (1x, 10x etc)
 
-src=""
+🔹 Controle de Fatura de Cartão
+
+Parcelas armazenadas individualmente na tabela fatura_cartao
+
+Comando especial fatura paga! converte as parcelas do mês em gastos reais
+
+🔹 Cotações de Moedas
+
+Comando cotação → retorna cotações de USD, EUR, BTC, ETH, GBP
+
+Comando cotação usd ou cotação btc → consulta moeda específica
+
+🔹 Agendamento de Lembretes por CRON
+
+Sintaxe no estilo:
+
+lembrete: "revisar projeto"
+cron: 0 8 * * 1-5
+
+Executa lembretes com precisão usando o APScheduler
+
+Mensagens personalizadas enviadas automaticamente no horário definido
+
+🔹 Ajuda com Expressões CRON
+
+Envie tabela de cron para receber exemplos explicativos
+
+🔹 Consulta de Gasto Mensal
+
+Comando total gasto no mês? → mostra o valor consolidado do mês atual
+
+🗃️ Estrutura do Banco de Dados (PostgreSQL)
+
+As tabelas são criadas automaticamente com db_init.py, mas podem ser visualizadas via Railway UI ou ferramentas SQL:
+
+CREATE TABLE gastos (
+  id SERIAL PRIMARY KEY,
+  descricao TEXT,
+  valor REAL,
+  categoria TEXT,
+  meio_pagamento TEXT,
+  parcelas INT DEFAULT 1,
+  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE fatura_cartao (
+  id SERIAL PRIMARY KEY,
+  descricao TEXT,
+  valor REAL,
+  categoria TEXT,
+  meio_pagamento TEXT,
+  parcela TEXT,
+  data_inicio TIMESTAMP,
+  data_fim DATE
+);
+
+CREATE TABLE lembretes (
+  id SERIAL PRIMARY KEY,
+  telefone TEXT,
+  mensagem TEXT,
+  cron TEXT
+);
+
+CREATE TABLE salario (
+  id SERIAL PRIMARY KEY,
+  valor REAL,
+  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+🌐 Integração com a API Oficial do WhatsApp (Cloud API)
+
+Requisitos:
+
+Conta no Facebook for Developers
+
+Criar um App do tipo Empresa
+
+Ativar o WhatsApp na seção de Produtos
+
+Configurar o webhook com URL + token de verificação
+
+Adicionar seu número como tester (modo desenvolvimento)
+
+Payload Recebido:
+
+{
+  "entry": [
+    {
+      "changes": [
+        {
+          "value": {
+            "messages": [
+              {
+                "from": "555199999999",
+                "text": { "body": "cotação" },
+                "timestamp": "1711417455"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+
+🚀 Deploy no Railway (Backend + Banco)
+
+Clonar este repositório e conectar ao Railway
+
+Criar banco PostgreSQL pelo Railway UI
+
+Adicionar .env com:
+
+DATABASE_URL=postgresql://...
+VERIFY_TOKEN=seu_token
+WHATSAPP_NUMBER=seu_numero
+
+O Railway gera a URL pública da sua API: https://nome-do-app.up.railway.app
+
+Conectar essa URL ao webhook da Meta
+
+📌 Exemplos de Comandos via WhatsApp
+
+lanche 25 pix
+uber 40 crédito
+fatura paga!
+cotação
+cotação btc
+lembrete: beber água
+cron: 30 14 * * *
+tabela de cron
+total gasto no mês?
+
+🧠 Lógica e Segurança
+
+log_tempos() compara tempo do WhatsApp vs. tempo de resposta do servidor
+
+Todas as rotas protegidas contra erro de payload
+
+.env com variáveis sensíveis (jamais subir no repositório público)
+
+Database com relações claras e normalizadas
+
+💬 Funcionalidades via WhatsApp (Checklist)
+
+✅ Registro de Gastos com descrição, valor, forma de pagamento e categoria inferida
+
+✅ Parcelamento de compras no cartão de crédito (armazenadas com datas de início e fim)
+
+✅ Cálculo automático da fatura atual com comando fatura paga!
+
+✅ Cotação de moedas principais (USD, EUR, BTC etc.) via API externa
+
+✅ Cotação específica com comando cotação USD, cotação BTC etc.
+
+✅ Agendamento de lembretes com expressões CRON no estilo:
+
+lembrete: "revisar projeto"
+cron: 0 8 * * 1-5
+
+✅ Envio automático dos lembretes na hora agendada via WhatsApp
+
+✅ Consulta do total de gastos no mês com comando total gasto no mês?
+
+✅ Ajuda com exemplos de CRON via tabela de cron
+
+✅ Logs com tempo de resposta e timestamp de recebimento da mensagem
+
+✅ Fallback para mensagens não reconhecidas com sugestão de formato correto
+
+✅ Armazenamento persistente em PostgreSQL via Railway
+
+
+✅ Próximos Passos
+
+🔲 Interface web (Streamlit ou Dash) para visualização dos gastos e lembretes
+
+🔲 Exportação de relatórios mensais (em CSV, Excel ou PDF)
+
+🔲 Implementar suporte multiusuário (gastos e lembretes por telefone)
+
+🔲 Adicionar autenticação de usuários com tokens temporários
+
+🔲 Criar um painel de controle administrativo (via browser)
+
+🔲 Melhorar a categorização automática com IA (embeddings + classificação)
+
+🔲 Adicionar suporte a voz (com transcrição de áudios)
+
+🔲 Criar versão PWA ou integração com Telegram
+
+🔲 Deploy automatizado com CI/CD no GitHub Actions
+
+🔲 Monitoramento de logs e uptime com alertas automáticos
+
+✅ Próximos Passos
+
+🔲 Interface web (Streamlit ou Dash) para visualização dos gastos e lembretes
+
+🔲 Exportação de relatórios mensais (em CSV, Excel ou PDF)
+
+🔲 Implementar suporte multiusuário (gastos e lembretes por telefone)
+
+🔲 Adicionar autenticação de usuários com tokens temporários
+
+🔲 Criar um painel de controle administrativo (via browser)
+
+🔲 Melhorar a categorização automática com IA (embeddings + classificação)
+
+🔲 Adicionar suporte a voz (com transcrição de áudios)
+
+🔲 Criar versão PWA ou integração com Telegram
+
+🔲 Deploy automatizado com CI/CD no GitHub Actions
+
+🔲 Monitoramento de logs e uptime com alertas automáticos

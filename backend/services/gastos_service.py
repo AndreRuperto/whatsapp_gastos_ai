@@ -92,17 +92,17 @@ def pagar_fatura(schema):
 
 def registrar_salario(mensagem, schema):
     try:
-        valor = float(mensagem.split()[-1])
+        valor = float(mensagem.split()[-1].replace(",", "."))
         conn = conectar_bd()
         cursor = conn.cursor()
         cursor.execute(f"INSERT INTO {schema}.salario (valor, data) VALUES (%s, NOW())", (valor,))
         conn.commit()
         cursor.close()
         conn.close()
-        return {"status": "💰 Salário registrado com sucesso!"}
+        return f"💰 Salário de R$ {valor:.2f} registrado com sucesso!"
     except Exception as e:
         print(f"❌ Erro ao registrar salário: {e}")
-        return {"status": "❌ Erro ao registrar salário"}
+        return "❌ Erro ao registrar salário. Verifique o valor e tente novamente."
 
 def calcular_datas_fatura(data_compra: str, num_parcelas: int):
     datas_pagamento = []

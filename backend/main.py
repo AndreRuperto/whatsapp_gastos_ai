@@ -25,6 +25,7 @@ from backend.services.gastos_service import (
 
 from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
 from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
+from services.token_service import gerar_token_acesso
 
 # Configuração básica de logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -157,7 +158,11 @@ async def receber_mensagem(request: Request):
         registrar_mensagem_recebida(mensagem_id)
 
         partes = mensagem.split()
-        if mensagem_lower == "total gasto":
+        if mensagem_lower in ["ajuda", "menu", "comandos"]:
+            await exibir_menu_ajuda(telefone)
+            return {"status": "OK", "resposta": "Menu de ajuda enviado"}
+
+        elif mensagem_lower == "total gasto":
             total = calcular_total_gasto(schema)
             resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
             await enviar_mensagem_whatsapp(telefone, resposta)
@@ -170,7 +175,32 @@ async def receber_mensagem(request: Request):
             await enviar_mensagem_whatsapp(telefone, resposta)
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
+
+        elif mensagem_lower.startswith("salario "):
+            resposta = registrar_salario(mensagem, schema)
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+            return {"status": "OK", "resposta": resposta}
         
+        elif mensagem_lower == "gráficos":
+            token_info = gerar_token_acesso(telefone)
+            if not token_info:
+                resposta = "❌ Erro ao gerar seu link de acesso aos gráficos. Tente novamente mais tarde."
+            else:
+                token = token_info["token"]
+                expira_em = token_info["expira_em"]
+                link = f"https://dashboard-financas.up.railway.app/?phone={telefone}&token={token}"
+                resposta = (
+                    f"📊 *Seu link personalizado para visualizar os gráficos:*\n\n"
+                    f"{link}\n\n"
+                    f"⚠️ O link é válido por 30 minutos (até as *{expira_em.strftime('%H:%M')}*).\n"
+                    f"Depois disso, será necessário gerar um novo link digitando 'gráficos' novamente."
+                )
+
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+            return {"status": "OK", "resposta": resposta}
+
         elif mensagem_lower.startswith("cep "):
             partes = mensagem.split()
             if len(partes) == 2 and partes[1].isdigit():
@@ -797,3 +827,110 @@ def definir_categoria(descricao: str):
         if chave in descricao.lower():
             return cat
     return "Outros"
+
+COMANDOS = [
+    {
+        "comando": "ajuda",
+        "descricao": "Mostra este menu",
+        "admin_only": False,
+    },
+    {
+        "comando": "total gasto",
+        "descricao": "Exibe o total de gastos do mês",
+        "admin_only": False,
+    },
+    {
+        "comando": "gráficos",
+        "descricao": "Envia um link com os gráficos financeiros",
+        "admin_only": False,
+    },
+    {
+        "comando": "fatura paga!",
+        "descricao": "Informa que sua fatura foi paga",
+        "admin_only": False,
+    },
+    {
+        "comando": "cotação",
+        "descricao": "Mostra as principais moedas do dia",
+        "admin_only": False,
+    },
+    {
+        "comando": "lista cotação",
+        "descricao": "Lista todas as moedas disponíveis",
+        "admin_only": False,
+    },
+    {
+        "comando": "cotação [moeda]",
+        "descricao": "Mostra a cotação da moeda (ex: cotação USD)",
+        "admin_only": False,
+    },
+    {
+        "comando": "cotação [moeda1]-[moeda2]",
+        "descricao": "Conversão entre duas moedas (ex: cotação USD-EUR)",
+        "admin_only": False,
+    },
+    {
+        "comando": "cep [número]",
+        "descricao": "Retorna o endereço correspondente ao CEP",
+        "admin_only": False,
+    },
+    {
+        "comando": "lembrete: \"msg\" + cron: padrão",
+        "descricao": "Agenda um lembrete com cron",
+        "admin_only": False,
+    },
+    {
+        "comando": "tabela cron",
+        "descricao": "Exibe exemplos de agendamento CRON",
+        "admin_only": False,
+    },
+    {
+        "comando": "lista lembretes",
+        "descricao": "Lista todos os lembretes ativos",
+        "admin_only": False,
+    },
+    {
+        "comando": "apagar lembrete [id]",
+        "descricao": "Apaga um lembrete específico",
+        "admin_only": False,
+    },
+    # 👑 Admin
+    {
+        "comando": "liberar [telefone] [nome]",
+        "descricao": "Autoriza novo número e cria schema",
+        "admin_only": True,
+    },
+    {
+        "comando": "não liberar [telefone]",
+        "descricao": "Recusa um número e envia notificação ao usuário",
+        "admin_only": True,
+    },
+    {
+        "comando": "lista usuarios",
+        "descricao": "Lista todos os usuários autorizados",
+        "admin_only": True,
+    },
+    {
+        "comando": "revogar [telefone]",
+        "descricao": "Revoga a autorização de um número",
+        "admin_only": True,
+    },
+]
+
+async def exibir_menu_ajuda(telefone: str):
+    admin_phone = os.getenv("ADMIN_PHONE")
+    is_admin = telefone == admin_phone
+
+    titulo = "🛠️ *Menu de Ajuda - Administrador*" if is_admin else "🤖 *Menu de Ajuda - Assistente Financeiro*"
+    texto_ajuda = [titulo, "\n📌 *Comandos disponíveis:*"]
+
+    for cmd in COMANDOS:
+        if not cmd["admin_only"] or is_admin:
+            texto_ajuda.append(f"• `{cmd['comando']}` → {cmd['descricao']}")
+
+    if not is_admin:
+        texto_ajuda.append("\n🧠 *Exemplo de lembrete:*\n"
+                           "`lembrete: \"Pagar conta\"`\n"
+                           "`cron: 0 9 * * 1-5` → Todos os dias úteis às 9h")
+
+    await enviar_mensagem_whatsapp(telefone, "\n".join(texto_ajuda))

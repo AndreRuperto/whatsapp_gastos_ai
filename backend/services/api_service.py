@@ -141,5 +141,3 @@ def buscar_cep(cep: str):
 
     except requests.RequestException as e:
         return f"❌ Erro ao buscar o CEP: {str(e)}"
-    
-print(buscar_cep("05424020"))

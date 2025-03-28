@@ -1,11 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 from .db_init import conectar_bd
-import pytz  # <- você pode adicionar ao requirements.txt
 
 def gerar_token_acesso(telefone: str) -> dict:
-    fuso_brasilia = pytz.timezone("America/Sao_Paulo")
-    agora = datetime.now(fuso_brasilia)
+    agora = datetime.now(timezone.utc)
     expira_em = agora + timedelta(minutes=30)
     token = secrets.token_urlsafe(16)
 

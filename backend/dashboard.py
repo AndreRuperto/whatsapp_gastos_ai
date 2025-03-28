@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 import streamlit as st
 import pandas as pd
 import psycopg2
@@ -6,7 +8,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import pytz
 from services.token_service import validar_token
-import urllib.parse
 
 load_dotenv()
 

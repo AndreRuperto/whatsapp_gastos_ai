@@ -3,7 +3,7 @@ import pandas as pd
 import psycopg2
 import os
 from dotenv import load_dotenv
-from backend.services.token_service import validar_token
+from services.token_service import validar_token
 
 load_dotenv()
 

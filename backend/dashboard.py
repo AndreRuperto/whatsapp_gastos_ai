@@ -20,13 +20,12 @@ token = query_params.get("token", [None])[0]
 
 # Fallback se vier quebrado
 if phone and len(phone) < 10:
-    full_url = st.get_page_url()
-    parsed_url = urllib.parse.urlparse(full_url)
-    qs = urllib.parse.parse_qs(parsed_url.query)
+    query_string = os.environ.get("QUERY_STRING", "")
+    qs = urllib.parse.parse_qs(query_string)
 
     phone = qs.get("phone", [None])[0]
     token = qs.get("token", [None])[0]
-
+    
 resultado = validar_token(phone, token)
 if not resultado:
     st.error("🔒 Link inválido ou expirado. Solicite um novo link.")

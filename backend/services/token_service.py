@@ -25,6 +25,7 @@ def gerar_token_acesso(telefone: str) -> dict:
 
     # 🧹 Limpar tokens expirados
     cursor.execute("DELETE FROM tokens_ativos WHERE expira_em < (NOW() AT TIME ZONE 'America/Sao_Paulo')")
+    print("🧹 Tokens expirados removidos:", cursor.rowcount)
 
     # 🆕 Inserir token
     cursor.execute("""

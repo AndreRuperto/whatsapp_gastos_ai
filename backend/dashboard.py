@@ -23,9 +23,9 @@ st.markdown("---")
 st.write("🐞 Debug - query_params:", st.query_params)
 
 # ✅ Método compatível e funcional para Streamlit 1.32.0
-query_params = st.query_params()
-phone = query_params.get("phone")[0]
-token = query_params.get("token")[0]
+query_params = st.query_params
+phone = query_params.get("phone")
+token = query_params.get("token")
 
 print("📲 Telefone:", phone)
 print("🔐 Token:", token)

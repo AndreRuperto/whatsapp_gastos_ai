@@ -11,7 +11,7 @@ st.set_page_config(page_title="Dashboard Financeiro", layout="wide")
 st.title("📊 Dashboard de Gastos - WhatsApp AI")
 st.markdown("---")
 
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 phone = query_params.get("phone", [None])[0]
 token = query_params.get("token", [None])[0]
 

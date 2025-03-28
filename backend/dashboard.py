@@ -8,12 +8,19 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import pytz
 from services.token_service import validar_token
+import urllib.parse
 
 load_dotenv()
 
 st.set_page_config(page_title="Dashboard Financeiro", layout="wide")
 st.title("📊 Dashboard de Gastos - WhatsApp AI")
 st.markdown("---")
+
+full_url = st.experimental_get_query_params()
+st.write("🐞 Debug - experimental_get_query_params:", full_url)
+
+# ou, se estiver usando st.query_params:
+st.write("🐞 Debug - query_params:", st.query_params)
 
 # ✅ Método compatível e funcional para Streamlit 1.32.0
 query_params = st.experimental_get_query_params()

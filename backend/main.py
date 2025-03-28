@@ -187,11 +187,17 @@ async def receber_mensagem(request: Request):
             token = token_info["token"]
             expira_em = token_info["expira_em"]
 
+            print("👀 DEBUG Telefone:", telefone)
+            print("👀 DEBUG Token:", token)
+
             resposta = (
                 "📊 Aqui está o seu link com os gráficos financeiros!\n\n"
                 f"🔗 https://dashboard-financas.up.railway.app/?phone={telefone}&token={token}\n"
                 f"⚠️ O link é válido até às {expira_em.strftime('%H:%M')} por segurança."
             )
+
+            print("🔗 Link final gerado:", resposta)
+            
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
 

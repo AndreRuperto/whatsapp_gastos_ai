@@ -3,9 +3,16 @@ import logging
 from dotenv import load_dotenv
 import os
 
+# Carrega variáveis de ambiente
 load_dotenv()
+
+# Configuração
 logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# 🔌 Conexão reutilizável
+def conectar_bd():
+    return psycopg2.connect(DATABASE_URL)
 
 def inicializar_bd(DATABASE_URL):
     conn = psycopg2.connect(DATABASE_URL)
@@ -64,6 +71,16 @@ def inicializar_bd(DATABASE_URL):
             telefone TEXT UNIQUE,
             autorizado BOOLEAN DEFAULT false,
             data_inclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tokens_ativos (
+            id SERIAL PRIMARY KEY,
+            telefone TEXT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            schema TEXT NOT NULL,
+            criado_em TIMESTAMP NOT NULL DEFAULT NOW(),
+            expira_em TIMESTAMP NOT NULL
         )
     ''')
     conn.commit()

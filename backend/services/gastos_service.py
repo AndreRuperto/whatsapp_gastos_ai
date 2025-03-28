@@ -4,13 +4,12 @@ import datetime
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from services.db_init import conectar_bd, inicializar_bd
+
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-def conectar_bd():
-    return psycopg2.connect(DATABASE_URL)
 
 def salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema):
     conn = conectar_bd()

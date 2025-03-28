@@ -183,7 +183,7 @@ async def receber_mensagem(request: Request):
             return {"status": "OK", "resposta": resposta}
         
         elif mensagem_lower == "gráficos":
-            token_info = gerar_token_acesso(telefone)
+            token_info = gerar_token_acesso(telefone, schema)
             if not token_info:
                 resposta = "❌ Erro ao gerar seu link de acesso aos gráficos. Tente novamente mais tarde."
             else:

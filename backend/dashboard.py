@@ -25,10 +25,9 @@ if not resultado:
 
 schema, expira_em = resultado
 
-# 🎯 Alerta de expiração com fuso de Brasília
 fuso_brasilia = pytz.timezone("America/Sao_Paulo")
 agora = datetime.now(fuso_brasilia)
-expira_em = expira_em.astimezone(fuso_brasilia)  # Exibe no fuso correto
+expira_em = expira_em.astimezone(fuso_brasilia)
 
 minutos_restantes = int((expira_em - agora).total_seconds() // 60)
 expira_formatado = expira_em.strftime("%H:%M")
@@ -41,59 +40,104 @@ elif minutos_restantes <= 5:
 else:
     st.info(f"🔐 Link válido até às {expira_formatado} (horário de Brasília).")
 
-# 🔌 Conecta ao banco de dados e carrega as informações
 DATABASE_URL = os.getenv("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL)
-query = f"SELECT descricao, valor, categoria, meio_pagamento, data FROM {schema}.gastos ORDER BY data DESC"
+query = f"SELECT descricao, valor, categoria, meio_pagamento, data, tipo FROM {schema}.gastos ORDER BY data DESC"
 df = pd.read_sql(query, conn)
-
-st.subheader("💰 Últimos Gastos Registrados")
-st.dataframe(df)
-
-# ⚙️ Filtro por Categoria
-categoria = st.selectbox("Filtrar por Categoria", ["Todas"] + list(df["categoria"].unique()))
-if categoria != "Todas":
-    df = df[df["categoria"] == categoria]
-
-# 📅 Gráfico Temporal
-st.subheader("📅 Gastos ao longo do tempo")
 df["data"] = pd.to_datetime(df["data"])
-df = df.copy()
 df.set_index("data", inplace=True)
-st.line_chart(df["valor"])
 
-# 📈 Gráfico de Gastos por Categoria
-st.subheader("📈 Gastos por Categoria")
-chart_data_cat = df.groupby("categoria")["valor"].sum().reset_index()
-st.bar_chart(chart_data_cat, x="categoria", y="valor")
+cur = conn.cursor()
+cur.execute(f"SELECT valor FROM {schema}.salario ORDER BY data DESC LIMIT 1")
+salario = cur.fetchone()
+salario = salario[0] if salario else 0
 
-# 💳 Gráfico de Gastos por Meio de Pagamento (débito, crédito, pix, etc.)
-st.subheader("💳 Gastos por Meio de Pagamento")
+cur.execute(f"SELECT valor FROM {schema}.limite_cartao ORDER BY data DESC LIMIT 1")
+limite = cur.fetchone()
+limite = limite[0] if limite else 0
 
-# Cria um mini DataFrame com a soma dos valores por "meio_pagamento"
-df_pagamento = df.groupby("meio_pagamento")["valor"].sum().reset_index()
+cur.execute(f"SELECT SUM(valor) FROM {schema}.gastos WHERE meio_pagamento = 'crédito' AND data >= date_trunc('month', CURRENT_DATE)")
+fatura = cur.fetchone()
+fatura = fatura[0] if fatura and fatura[0] else 0
 
-# Deixa o usuário escolher qual gráfico quer ver
-opcoes_grafico = ["Barra (nativo)", "Pizza (Altair)"]
-tipo_grafico = st.selectbox("Escolha o tipo de gráfico:", opcoes_grafico)
+cur.close()
 
-if tipo_grafico == "Barra (nativo)":
-    # st.bar_chart precisa de índice
-    df_pagamento_bar = df_pagamento.copy()
-    df_pagamento_bar.set_index("meio_pagamento", inplace=True)
-    st.bar_chart(df_pagamento_bar["valor"])
+st.markdown("### 📌 Visão Geral Financeira")
+k1, k2, k3 = st.columns(3)
+k1.metric("💵 Salário Atual", f"R$ {salario:,.2f}".replace(",", ".").replace(".", ",", 1))
+k2.metric("💳 Fatura do Cartão", f"R$ {fatura:,.2f}".replace(",", ".").replace(".", ",", 1))
+k3.metric("📈 Limite do Cartão", f"R$ {limite:,.2f}".replace(",", ".").replace(".", ",", 1))
 
-elif tipo_grafico == "Pizza (Altair)":
-    # Gráfico de Pizza usando Altair
-    chart = alt.Chart(df_pagamento).mark_arc().encode(
-        theta=alt.Theta(field="valor", type="quantitative"),
-        color=alt.Color(field="meio_pagamento", type="nominal"),
-        tooltip=["meio_pagamento", "valor"]
-    )
-    st.altair_chart(chart, use_container_width=True)
+abas = st.tabs(["📋 Visão Geral", "📂 Categorias", "💳 Pagamentos", "📅 Resumos", "🏆 Top Categorias", "🔮 Previsões", "🔔 Alertas", "📆 Calendário", "📊 Mês a Mês"])
+
+with abas[0]:
+    st.subheader("💰 Últimos Gastos Registrados")
+    st.dataframe(df.reset_index())
+
+with abas[1]:
+    st.subheader("📈 Gastos por Categoria")
+    chart_data_cat = df.groupby("categoria")["valor"].sum().reset_index()
+    st.bar_chart(chart_data_cat, x="categoria", y="valor")
+
+with abas[2]:
+    st.subheader("💳 Gastos por Meio de Pagamento")
+    df_pagamento = df.groupby("meio_pagamento")["valor"].sum().reset_index()
+    tipo_grafico = st.radio("Tipo de Gráfico", ["Barras", "Pizza"], horizontal=True)
+    if tipo_grafico == "Barras":
+        st.bar_chart(df_pagamento.set_index("meio_pagamento"))
+    else:
+        chart = alt.Chart(df_pagamento).mark_arc().encode(
+            theta=alt.Theta("valor", type="quantitative"),
+            color=alt.Color("meio_pagamento", type="nominal"),
+            tooltip=["meio_pagamento", "valor"]
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+with abas[3]:
+    st.subheader("🗓️ Resumos por Período")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Gastos por Dia da Semana")
+        df["dia_semana"] = df.index.day_name(locale="pt_BR")
+        st.bar_chart(df.groupby("dia_semana")["valor"].sum())
+
+    with col2:
+        st.markdown("### Tendência Mensal (Cash Flow)")
+        df_mensal = df.resample("M")["valor"].sum()
+        st.line_chart(df_mensal)
+
+with abas[4]:
+    st.subheader("🏆 Top Categorias do Mês")
+    hoje = datetime.now().replace(day=1)
+    df_mes = df[df.index >= hoje]
+    top_categorias = df_mes.groupby("categoria")["valor"].sum().nlargest(3).reset_index()
+    st.write(top_categorias)
+
+with abas[5]:
+    st.subheader("🔮 Previsões Financeiras")
+    st.info("Aqui poderiam ser exibidas previsões usando modelos estatísticos ou de Machine Learning, indicando tendências futuras com base no comportamento financeiro passado.")
+
+with abas[6]:
+    st.subheader("🔔 Alertas e Insights")
+    if fatura >= 0.8 * limite:
+        st.warning("⚠️ Sua fatura atingiu 80% ou mais do seu limite de crédito!")
+    media_gastos = df["valor"].mean()
+    gastos_acima_media = df[df["valor"] > media_gastos]
+    if not gastos_acima_media.empty:
+        st.warning("⚠️ Alguns gastos recentes estão acima da média. Considere revisar suas despesas.")
+
+with abas[7]:
+    st.subheader("📆 Calendário Interativo")
+    st.write("Calendário com os dias de maiores gastos poderia ser exibido aqui.")
+
+with abas[8]:
+    st.subheader("📊 Comparação Mês a Mês")
+    df_mes_a_mes = df.resample('M')['valor'].sum().reset_index()
+    st.bar_chart(df_mes_a_mes.set_index("data"))
 
 # 📥 Download CSV
-df.to_csv("gastos.csv", index=False)
+df.reset_index().to_csv("gastos.csv", index=False)
 with open("gastos.csv", "rb") as f:
     st.download_button(label="📥 Baixar CSV", data=f, file_name="gastos.csv", mime="text/csv")
 

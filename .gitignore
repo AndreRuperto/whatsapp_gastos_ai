@@ -49,3 +49,9 @@ nlp_categorizer/model_spacy/
 
 backend/services/teste.py
 
+# Ignora tudo da pasta de treino local
+/nlp_categorizer/
+
+# Ignora modelos treinados temporários
+*.bin
+*.bin.gz

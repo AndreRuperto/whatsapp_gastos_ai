@@ -10,6 +10,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 import time
 from datetime import datetime
 import re
+import fasttext
 
 from backend.services.scheduler import scheduler, agendar_lembrete_cron
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp
@@ -52,6 +53,9 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_COTACAO = os.getenv("API_COTACAO")
 inicializar_bd(DATABASE_URL)
+
+caminho_modelo = os.path.join("backend", "models", "modelo_gastos_prod.bin")
+MODELO_FASTTEXT = fasttext.load_model(caminho_modelo)
 
 @app.get("/ping")
 def ping():
@@ -304,7 +308,7 @@ async def receber_mensagem(request: Request):
                 nome_usuario = " ".join(partes[2:])
                 if telefone == os.getenv("ADMIN_PHONE"):
                     try:
-                        liberar_usuario(numero_para_liberar, nome_usuario)
+                        liberar_usuario(nome_usuario, numero_para_liberar)
                         resposta = f"✅ Número {numero_para_liberar} ({nome_usuario}) autorizado com sucesso!"
 
                         # ✅ Envia mensagem para o novo usuário liberado
@@ -504,8 +508,9 @@ def processar_mensagem(mensagem: str):
         descricao = ""
 
         for i, parte in enumerate(partes):
-            if parte.replace(".", "").isdigit():
-                valor = float(parte)
+            parte_limpa = parte.replace(".", "").replace(",", "")
+            if parte_limpa.isdigit():
+                valor = float(parte.replace(",", "."))
                 descricao = " ".join(partes[:i])
 
                 # 📌 Detectando parcelamento (Ex: "3x crédito")
@@ -523,7 +528,8 @@ def processar_mensagem(mensagem: str):
             logger.warning("⚠️ Nenhum valor encontrado na mensagem!")
             return "Erro", 0.0, "Desconhecido", "Desconhecido", 1
 
-        categoria = definir_categoria(descricao)
+        categoria, probabilidade = definir_categoria(descricao)
+        logger.info(f"📊 Categoria prevista: {categoria} ({probabilidade:.2%})")
         return descricao.strip(), valor, categoria, meio_pagamento, parcelas
 
     except Exception as e:
@@ -532,301 +538,13 @@ def processar_mensagem(mensagem: str):
 
 def definir_categoria(descricao: str):
     """
-    Seu dicionário de categorias, com palavras-chave.
+    Usa o modelo FastText para prever a categoria a partir da descrição.
     """
-    categorias = {
-        # 🍽️ Alimentação
-        "almoço": "Alimentação",
-        "jantar": "Alimentação",
-        "café": "Alimentação",
-        "lanchonete": "Alimentação",
-        "pizza": "Alimentação",
-        "hamburguer": "Alimentação",
-        "churrasco": "Alimentação",
-        "restaurante": "Alimentação",
-        "delivery": "Alimentação",
-        "sushi": "Alimentação",
-        "padaria": "Alimentação",
-        "bar": "Alimentação",
-        "fast food": "Alimentação",
-        "marmita": "Alimentação",
-        "doceria": "Alimentação",
-        "brigadeiro": "Alimentação",
-        "chocolate": "Alimentação",
-        "brownie": "Alimentação",
-        "festival gastronômico": "Alimentação",
-        "rodízio": "Alimentação",
-        "buffet": "Alimentação",
-        "petiscos": "Alimentação",
-        "food truck": "Alimentação",
-        "vinho": "Alimentação",
-        "cerveja": "Alimentação",
-        "bebidas": "Alimentação",
-        "feijoada": "Alimentação",
-        "coxinha": "Alimentação",
-        "esfiha": "Alimentação",
-        "pastel": "Alimentação",
-        "salgado": "Alimentação",
-        "tapioca": "Alimentação",
-        "sorvete": "Alimentação",
-        "gelato": "Alimentação",
-        "milkshake": "Alimentação",
-        "cupcake": "Alimentação",
+    predicao = MODELO_FASTTEXT.predict(descricao)
+    categoria_predita = predicao[0][0].replace("__label__", "")
+    probabilidade = predicao[1][0]
 
-        # 🚗 Transporte
-        "uber": "Transporte",
-        "99": "Transporte",
-        "ônibus": "Transporte",
-        "metrô": "Transporte",
-        "trem": "Transporte",
-        "gasolina": "Transporte",
-        "estacionamento": "Transporte",
-        "pedágio": "Transporte",
-        "bike": "Transporte",
-        "patinete": "Transporte",
-        "carro": "Transporte",
-        "manutenção carro": "Transporte",
-        "reboque": "Transporte",
-        "taxi": "Transporte",
-        "mototáxi": "Transporte",
-        "passagem": "Transporte",
-        "aéreo": "Transporte",
-        "uber eats": "Transporte",
-        "combustível": "Transporte",
-        "lava rápido": "Transporte",
-
-        # 🏠 Moradia
-        "aluguel": "Moradia",
-        "condomínio": "Moradia",
-        "iptu": "Moradia",
-        "seguro residencial": "Moradia",
-        "faxina": "Moradia",
-        "reforma": "Moradia",
-        "móvel": "Moradia",
-        "imobiliária": "Moradia",
-        "decoração": "Moradia",
-        "mudança": "Moradia",
-        "pintura": "Moradia",
-        "limpeza": "Moradia",
-        "síndico": "Moradia",
-        "guarita": "Moradia",
-        "porteiro": "Moradia",
-        "manutenção casa": "Moradia",
-        "jardinagem": "Moradia",
-        "ar condicionado": "Moradia",
-        "gás encanado": "Moradia",
-        "portão": "Moradia",
-
-        # 🔌 Contas e Serviços Públicos
-        "luz": "Contas",
-        "água": "Contas",
-        "internet": "Contas",
-        "celular": "Contas",
-        "tv a cabo": "Contas",
-        "telefonia": "Contas",
-        "taxa lixo": "Contas",
-        "energia": "Contas",
-        "iluminação": "Contas",
-        "esgoto": "Contas",
-        "contador": "Contas",
-        "ipva": "Contas",
-        "dpvat": "Contas",
-        "licenciamento": "Contas",
-        "multas": "Contas",
-
-        # 🛒 Supermercado
-        "mercado": "Supermercado",
-        "compras": "Supermercado",
-        "hortifruti": "Supermercado",
-        "açougue": "Supermercado",
-        "feira": "Supermercado",
-        "peixaria": "Supermercado",
-        "frios": "Supermercado",
-        "mercearia": "Supermercado",
-        "limpeza": "Supermercado",
-        "higiene": "Supermercado",
-        "perfumaria": "Supermercado",
-        "empório": "Supermercado",
-        "hipermercado": "Supermercado",
-        "suprimentos": "Supermercado",
-        "armazém": "Supermercado",
-
-        # 🎭 Lazer e Entretenimento
-        "cinema": "Lazer",
-        "show": "Lazer",
-        "teatro": "Lazer",
-        "netflix": "Lazer",
-        "spotify": "Lazer",
-        "prime video": "Lazer",
-        "disney+": "Lazer",
-        "xbox game pass": "Lazer",
-        "playstation plus": "Lazer",
-        "steam": "Lazer",
-        "livro": "Lazer",
-        "parque": "Lazer",
-        "passeio": "Lazer",
-        "viagem": "Lazer",
-        "ingresso": "Lazer",
-
-        # 🏥 Saúde
-        "farmácia": "Saúde",
-        "remédio": "Saúde",
-        "médico": "Saúde",
-        "dentista": "Saúde",
-        "hospital": "Saúde",
-        "exame": "Saúde",
-        "academia": "Saúde",
-        "pilates": "Saúde",
-        "fisioterapia": "Saúde",
-        "nutricionista": "Saúde",
-        "psicólogo": "Saúde",
-        "massagem": "Saúde",
-        "terapia": "Saúde",
-        "plano de saúde": "Saúde",
-        "suplemento": "Saúde",
-        "vacina": "Saúde",
-        "óculos": "Saúde",
-        "lente de contato": "Saúde",
-        "cirurgia": "Saúde",
-        "bem-estar": "Saúde",
-
-        # 🎓 Educação
-        "faculdade": "Educação",
-        "curso": "Educação",
-        "apostila": "Educação",
-        "plataforma educacional": "Educação",
-        "mentoria": "Educação",
-        "workshop": "Educação",
-        "palestra": "Educação",
-        "treinamento": "Educação",
-        "aula particular": "Educação",
-        "material escolar": "Educação",
-
-        # 💻 Tecnologia
-        "notebook": "Tecnologia",
-        "computador": "Tecnologia",
-        "fones de ouvido": "Tecnologia",
-        "mouse": "Tecnologia",
-        "teclado": "Tecnologia",
-        "tablet": "Tecnologia",
-        "monitor": "Tecnologia",
-        "ssd": "Tecnologia",
-        "pendrive": "Tecnologia",
-        "cabo usb": "Tecnologia",
-        "hd externo": "Tecnologia",
-        "streaming": "Tecnologia",
-        "smartphone": "Tecnologia",
-        "console": "Tecnologia",
-        "carregador": "Tecnologia",
-
-        # 👗 Vestuário
-        "roupa": "Vestuário",
-        "tênis": "Vestuário",
-        "calçado": "Vestuário",
-        "camiseta": "Vestuário",
-        "calça": "Vestuário",
-        "blusa": "Vestuário",
-        "moletom": "Vestuário",
-        "casaco": "Vestuário",
-        "acessórios": "Vestuário",
-        "joias": "Vestuário",
-        "mala": "Vestuário",
-        "bolsa": "Vestuário",
-        "meias": "Vestuário",
-        "cinto": "Vestuário",
-        "biquíni": "Vestuário",
-
-        # 🎁 Presentes
-        "presente": "Presentes",
-        "lembrancinha": "Presentes",
-        "aniversário": "Presentes",
-        "casamento": "Presentes",
-        "amigo secreto": "Presentes",
-        "mimo": "Presentes",
-
-        # ❤️ Doações
-        "doação": "Doações",
-        "vaquinha": "Doações",
-        "ong": "Doações",
-        "ajuda": "Doações",
-        "solidariedade": "Doações",
-
-        # 💰 Finanças
-        "investimento": "Finanças",
-        "poupança": "Finanças",
-        "cartão de crédito": "Finanças",
-        "empréstimo": "Finanças",
-        "seguro": "Finanças",
-        "juros": "Finanças",
-        "financiamento": "Finanças",
-        "consórcio": "Finanças",
-        "aplicação": "Finanças",
-        "corretora": "Finanças",
-
-        # ⚙️ Serviços
-        "barbearia": "Serviços",
-        "cabeleireiro": "Serviços",
-        "manicure": "Serviços",
-        "estética": "Serviços",
-        "encanador": "Serviços",
-        "eletricista": "Serviços",
-        "reparo": "Serviços",
-        "fotografia": "Serviços",
-        "freelancer": "Serviços",
-        "tradução": "Serviços",
-        "lavanderia": "Serviços",
-        "pet shop": "Serviços",
-        "faxineira": "Serviços",
-        "costureira": "Serviços",
-        "carpintaria": "Serviços",
-
-        # 📦 Assinaturas
-        "revista": "Assinaturas",
-        "jornal": "Assinaturas",
-        "plano anual": "Assinaturas",
-        "mensalidade": "Assinaturas",
-        "patreon": "Assinaturas",
-        "apoia.se": "Assinaturas",
-        "twitch sub": "Assinaturas",
-        "club de assinatura": "Assinaturas",
-        "newsletter paga": "Assinaturas",
-        "finclass": "Assinaturas",
-
-        # 🐱 Pets
-        "ração": "Pets",
-        "petisco": "Pets",
-        "veterinário": "Pets",
-        "vacina pet": "Pets",
-        "casinha": "Pets",
-        "areia": "Pets",
-        "banho e tosa": "Pets",
-        "coleira": "Pets",
-        "brinquedo pet": "Pets",
-        "remédio pet": "Pets",
-
-        # 🛠️ Hobby & DIY
-        "ferramenta": "Hobby/DIY",
-        "madeira": "Hobby/DIY",
-        "tinta spray": "Hobby/DIY",
-        "cola quente": "Hobby/DIY",
-        "artesanato": "Hobby/DIY",
-        "bordado": "Hobby/DIY",
-        "tricot": "Hobby/DIY",
-        "crochê": "Hobby/DIY",
-
-        # 🌱 Jardinagem
-        "mudas": "Jardinagem",
-        "adubo": "Jardinagem",
-        "fertilizante": "Jardinagem",
-        "vaso": "Jardinagem",
-        "regador": "Jardinagem",
-    }
-
-    # Percorre o dicionário e verifica se a palavra-chave está na descrição
-    for chave, cat in categorias.items():
-        if chave in descricao.lower():
-            return cat
-    return "Outros"
+    return categoria_predita, probabilidade
 
 COMANDOS = [
     {

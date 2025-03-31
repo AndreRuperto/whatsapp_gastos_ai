@@ -16,7 +16,7 @@ def verificar_autorizacao(telefone: str) -> bool:
     conn.close()
     return resultado is not None and resultado[0] is True
 
-def liberar_usuario(telefone, nome):
+def liberar_usuario(nome, telefone):
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 

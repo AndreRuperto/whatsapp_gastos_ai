@@ -53,5 +53,7 @@ backend/services/teste.py
 /nlp_categorizer/
 
 # Ignora modelos treinados temporários
-*.bin
-*.bin.gz
+#*.bin
+#*.bin.gz
+
+modelo_gastos_prod.bin

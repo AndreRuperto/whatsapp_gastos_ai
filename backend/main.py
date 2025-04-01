@@ -421,17 +421,13 @@ def obter_schema_por_telefone(telefone):
     """
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    cursor.execute("SELECT nome FROM usuarios WHERE telefone = %s AND autorizado = true", (telefone,))
+    cursor.execute("SELECT schema_user FROM usuarios WHERE telefone = %s AND autorizado = true", (telefone,))
     resultado = cursor.fetchone()
+    nome = resultado[0]
     cursor.close()
     conn.close()
     
-    if resultado:
-        nome = resultado[0]
-        schema = nome.strip().lower().replace(" ", "_")
-        return schema
-    else:
-        return None
+    return nome
 
 def descrever_cron_humanamente(expr):
     minutos, hora, dia, mes, semana = expr.strip().split()

@@ -26,7 +26,7 @@ def liberar_usuario(nome, telefone):
         INSERT INTO usuarios (nome, telefone, schema_user, autorizado)
         VALUES (%s, %s, %s, true)
         ON CONFLICT (telefone) DO UPDATE SET autorizado = true, nome = EXCLUDED.nome
-    """, (telefone, nome, schema))
+    """, (nome, telefone, schema))
 
     # 2. Criar schema com base no nome (transforma em minúsculo e remove espaços)
     cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")

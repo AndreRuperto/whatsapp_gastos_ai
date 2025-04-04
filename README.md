@@ -24,15 +24,17 @@ Este projeto foi desenvolvido com **FastAPI**, **PostgreSQL** e integração ofi
 
 ## 📁 Estrutura de Pastas do Projeto
 
+```text
 backend/
-├── main.py               # Rotas principais da API (Webhook)
-├── services/             # Lógica de negócio dividida por contexto
+├── main.py                # Rotas principais da API (Webhook)
+├── services/              # Lógica de negócio dividida por contexto
 │   ├── whatsapp_service.py  # Comunicação com a API oficial do WhatsApp
 │   ├── cotacao_service.py   # Busca cotações em tempo real via AwesomeAPI
 │   ├── gastos_service.py    # Processa e armazena os gastos e faturas
 │   ├── scheduler.py         # Lógica de agendamento dos lembretes (CRON)
 │   └── db_init.py           # Inicializa as tabelas no banco de dados PostgreSQL
-├── .env                 # Variáveis sensíveis como token, número e URL do banco
+├── .env                  # Variáveis sensíveis como token, número e URL do banco
+```
 
 ---
 

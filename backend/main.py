@@ -222,7 +222,7 @@ async def receber_mensagem(request: Request):
             log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
             return {"status": "OK", "resposta": resposta}
         
-        elif mensagem_lower.startswith("cotação") and ("-" in mensagem_lower or len(partes) == 2):
+        elif mensagem_lower.startswith("cotação") and len(partes) == 2:
             moeda_origem = partes[1].upper()
             resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem)
             await enviar_mensagem_whatsapp(telefone, resposta)

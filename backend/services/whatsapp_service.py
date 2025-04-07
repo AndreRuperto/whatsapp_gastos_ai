@@ -32,3 +32,34 @@ async def enviar_mensagem_whatsapp(telefone, mensagem):
         logger.error("❌ Erro ao enviar mensagem: %s", exc.response.text)
     except Exception as e:
         logger.exception("❌ Erro inesperado ao enviar mensagem:")
+
+async def obter_url_midia(media_id: str) -> str:
+    url = f"https://graph.facebook.com/v19.0/{media_id}"
+    headers = {
+        "Authorization": f"Bearer {TOKEN}"
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            media_info = response.json()
+            return media_info.get("url")
+    except Exception as e:
+        logger.exception(f"❌ Erro ao obter URL da mídia com ID {media_id}:")
+        return None
+
+async def baixar_midia(url: str, caminho_destino: str):
+    headers = {
+        "Authorization": f"Bearer {TOKEN}"
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            with open(caminho_destino, "wb") as f:
+                f.write(response.content)
+        logger.info(f"✅ Mídia salva em {caminho_destino}")
+    except Exception as e:
+        logger.exception(f"❌ Erro ao baixar a mídia da URL {url}:")

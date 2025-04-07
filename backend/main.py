@@ -13,7 +13,7 @@ import re
 import fasttext
 
 from backend.services.scheduler import scheduler, agendar_lembrete_cron
-from backend.services.whatsapp_service import enviar_mensagem_whatsapp
+from backend.services.whatsapp_service import enviar_mensagem_whatsapp, obter_url_midia, baixar_midia
 from backend.services.db_init import inicializar_bd
 
 from backend.services.api_service import (
@@ -27,7 +27,10 @@ from backend.services.gastos_service import (
 from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
 from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
 from backend.services.token_service import gerar_token_acesso
-from backend.services.noticias import obter_boletim_the_news
+from backend.services.noticias_service import obter_boletim_the_news
+from backend.services.leitura_documento import (
+    try_all_techniques, processar_qrcode_com_ocr, processar_codigodebarras_com_pdfplumber, gerar_descricao_para_classificacao
+)
 
 # Configuração básica de logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -111,312 +114,361 @@ async def receber_mensagem(request: Request):
             return JSONResponse(content={"status": "ignorado", "mensagem": "Nenhuma mensagem nova."}, status_code=200)
 
         mensagem_obj = mensagens[0]
-
-        # 🛡️ Proteção contra mensagens sem campo 'text'
-        try:
-            mensagem = mensagem_obj["text"]["body"].strip()
-        except KeyError:
-            tipo_mensagem = mensagem_obj.get("type", "desconhecido")
-            telefone = mensagem_obj.get("from", "desconhecido")
-            logger.warning(f"⚠️ Mensagem sem campo 'text'. Tipo: {tipo_mensagem}")
-            logger.warning(f"📦 Conteúdo bruto da mensagem: {json.dumps(mensagem_obj, indent=2)}")
-            await enviar_mensagem_whatsapp(
-                telefone,
-                "🚫 Sua mensagem não pôde ser processada. Envie um texto simples como 'oi' ou 'cotação'."
-            )
-            return JSONResponse(
-                content={"status": "ignorado", "mensagem": "Tipo de mensagem não suportado"},
-                status_code=200
-            )
-
-        mensagem_lower = mensagem.lower()
         telefone = mensagem_obj["from"]
         mensagem_id = mensagem_obj["id"]
         timestamp_whatsapp = int(mensagem_obj["timestamp"])
 
-        logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
+        # Proteção e roteamento por tipo de mídia
+        tipo_msg = mensagem_obj.get("type")
 
-        if not verificar_autorizacao(telefone):
-            logger.warning("🔒 Número não autorizado: %s", telefone)
+        if tipo_msg == "text":
+            mensagem = mensagem_obj["text"]["body"].strip()
+            mensagem_lower = mensagem.lower()
 
-            # Envia notificação ao ADMIN
-            admin = os.getenv("ADMIN_PHONE")
-            texto_admin = f"🔐 Solicitação de acesso de um novo número:\n{telefone}\n\nDeseja liberar com:\nliberar {telefone}"
-            await enviar_mensagem_whatsapp(admin, texto_admin)
+            logger.info("📩 Mensagem recebida: '%s' de %s", mensagem, telefone)
 
-            # Informa ao usuário
-            texto_usuario = "🚫 Seu número ainda não está autorizado a usar o assistente financeiro. Aguarde a liberação."
-            await enviar_mensagem_whatsapp(telefone, texto_usuario)
+            if not verificar_autorizacao(telefone):
+                logger.warning("🔒 Número não autorizado: %s", telefone)
 
-            return JSONResponse(content={"status": "bloqueado", "mensagem": "Número não autorizado"}, status_code=200)
+                # Envia notificação ao ADMIN
+                admin = os.getenv("ADMIN_PHONE")
+                texto_admin = f"🔐 Solicitação de acesso de um novo número:\n{telefone}\n\nDeseja liberar com:\nliberar {telefone}"
+                await enviar_mensagem_whatsapp(admin, texto_admin)
 
-        # 🔍 Obtém o schema associado ao telefone
-        schema = obter_schema_por_telefone(telefone)
-        if not schema:
-            logger.error(f"⚠️ Usuário {telefone} sem schema autorizado.")
-            return JSONResponse(content={"status": "erro", "mensagem": "Usuário não possui schema vinculado."}, status_code=403)
-        
-        if mensagem_ja_processada(mensagem_id):
-            logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
-            return JSONResponse(content={"status": "ignorado", "mensagem": "Mensagem duplicada ignorada."}, status_code=200)
+                # Informa ao usuário
+                texto_usuario = "🚫 Seu número ainda não está autorizado a usar o assistente financeiro. Aguarde a liberação."
+                await enviar_mensagem_whatsapp(telefone, texto_usuario)
 
-        registrar_mensagem_recebida(mensagem_id)
+                return JSONResponse(content={"status": "bloqueado", "mensagem": "Número não autorizado"}, status_code=200)
 
-        partes = mensagem.split()
-        if mensagem_lower in ["ajuda", "menu", "comandos"]:
-            await exibir_menu_ajuda(telefone)
-            return {"status": "OK", "resposta": "Menu de ajuda enviado"}
-
-        elif mensagem_lower == "total gasto":
-            total = calcular_total_gasto(schema)
-            resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
-
-        elif mensagem_lower == "fatura paga!":
-            pagar_fatura(schema)
-            resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
-
-        elif mensagem_lower.startswith("salario "):
-            resposta = registrar_salario(mensagem, schema)
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
-        
-        elif mensagem_lower == "gráficos":
-            token_info = gerar_token_acesso(telefone)
-            token = token_info["token"]
-            expira_em = token_info["expira_em"]
-
-            print("👀 DEBUG Telefone:", telefone)
-            print("👀 DEBUG Token:", token)
-
-            resposta = (
-                "📊 Aqui está o seu link com os gráficos financeiros!\n\n"
-                f"🔗 https://dashboard-financas.up.railway.app/?phone={telefone}&token={token}\n"
-                f"⚠️ O link é válido até às {expira_em.strftime('%H:%M')} por segurança."
-            )
-
-            print("🔗 Link final gerado:", resposta)
+            # 🔍 Obtém o schema associado ao telefone
+            schema = obter_schema_por_telefone(telefone)
+            if not schema:
+                logger.error(f"⚠️ Usuário {telefone} sem schema autorizado.")
+                return JSONResponse(content={"status": "erro", "mensagem": "Usuário não possui schema vinculado."}, status_code=403)
             
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
+            if mensagem_ja_processada(mensagem_id):
+                logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
+                return JSONResponse(content={"status": "ignorado", "mensagem": "Mensagem duplicada ignorada."}, status_code=200)
 
-        elif mensagem_lower.startswith("cep "):
+            registrar_mensagem_recebida(mensagem_id)
+
             partes = mensagem.split()
-            if len(partes) == 2 and partes[1].isdigit():
-                cep = partes[1]
-                resposta = buscar_cep(cep)
-            else:
-                resposta = "❌ Formato inválido. Use: `cep 05424020` (apenas números)."
+            if mensagem_lower in ["ajuda", "menu", "comandos"]:
+                await exibir_menu_ajuda(telefone)
+                return {"status": "OK", "resposta": "Menu de ajuda enviado"}
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
+            elif mensagem_lower == "total gasto":
+                total = calcular_total_gasto(schema)
+                resposta = f"📊 Total gasto no mês: R$ {format(total, ',.2f').replace(',', '.')}"
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
 
-        elif mensagem_lower == "cotação":
-            resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
-        
-        elif mensagem_lower.startswith("cotação") and len(partes) == 2:
-            moeda_origem = partes[1].upper()
-            resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem)
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
-        
-        elif mensagem_lower.startswith("cotação") and ("-" in mensagem_lower or len(partes) > 2):
-            moeda_origem = partes[1].upper()
-            moeda_destino = partes[3].upper()
-            resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem, moeda_destino)
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
-        
-        elif mensagem_lower == "listar moedas":
-            resposta = listar_moedas_disponiveis(MOEDAS)
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
+            elif mensagem_lower == "fatura paga!":
+                pagar_fatura(schema)
+                resposta = "✅ Todas as compras parceladas deste mês foram adicionadas ao total de gastos!"
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
 
-        elif mensagem_lower == "listar conversoes":
-            resposta = listar_conversoes_disponiveis(CONVERSOES)
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
-        elif mensagem_lower.startswith("conversoes "):
-            partes = mensagem.split()
-            if len(partes) == 2:
-                moeda = partes[1].upper()
-                if moeda in CONVERSOES:
-                    resposta = listar_conversoes_disponiveis_moeda(CONVERSOES, moeda)
+            elif mensagem_lower.startswith("salario "):
+                resposta = registrar_salario(mensagem, schema)
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
+            
+            elif mensagem_lower == "gráficos":
+                token_info = gerar_token_acesso(telefone)
+                token = token_info["token"]
+                expira_em = token_info["expira_em"]
+
+                print("👀 DEBUG Telefone:", telefone)
+                print("👀 DEBUG Token:", token)
+
+                resposta = (
+                    "📊 Aqui está o seu link com os gráficos financeiros!\n\n"
+                    f"🔗 https://dashboard-financas.up.railway.app/?phone={telefone}&token={token}\n"
+                    f"⚠️ O link é válido até às {expira_em.strftime('%H:%M')} por segurança."
+                )
+
+                print("🔗 Link final gerado:", resposta)
+                
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+
+            elif mensagem_lower.startswith("cep "):
+                partes = mensagem.split()
+                if len(partes) == 2 and partes[1].isdigit():
+                    cep = partes[1]
+                    resposta = buscar_cep(cep)
                 else:
-                    resposta = f"⚠️ Moeda '{moeda}' não encontrada ou não tem conversões disponíveis."
-            else:
-                resposta = "❌ Formato inválido. Use: conversoes [moeda]"
+                    resposta = "❌ Formato inválido. Use: `cep 05424020` (apenas números)."
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+
+            elif mensagem_lower == "cotação":
+                resposta = obter_cotacao_principais(API_COTACAO, MOEDA_EMOJIS)
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
+            
+            elif mensagem_lower.startswith("cotação") and len(partes) == 2:
+                moeda_origem = partes[1].upper()
+                resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem)
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
+            
+            elif mensagem_lower.startswith("cotação") and ("-" in mensagem_lower or len(partes) > 2):
+                moeda_origem = partes[1].upper()
+                moeda_destino = partes[3].upper()
+                resposta = obter_cotacao(API_COTACAO, MOEDAS, CONVERSOES, moeda_origem, moeda_destino)
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
+            
+            elif mensagem_lower == "listar moedas":
+                resposta = listar_moedas_disponiveis(MOEDAS)
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+
+            elif mensagem_lower == "listar conversoes":
+                resposta = listar_conversoes_disponiveis(CONVERSOES)
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+            elif mensagem_lower.startswith("conversoes "):
+                partes = mensagem.split()
+                if len(partes) == 2:
+                    moeda = partes[1].upper()
+                    if moeda in CONVERSOES:
+                        resposta = listar_conversoes_disponiveis_moeda(CONVERSOES, moeda)
+                    else:
+                        resposta = f"⚠️ Moeda '{moeda}' não encontrada ou não tem conversões disponíveis."
+                else:
+                    resposta = "❌ Formato inválido. Use: conversoes [moeda]"
+
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
 
 
-        elif mensagem_lower.startswith("lembrete:") and "cron:" in mensagem_lower:
-            resposta = processar_lembrete_formatado(mensagem, telefone)
-            if resposta:
+            elif mensagem_lower.startswith("lembrete:") and "cron:" in mensagem_lower:
+                resposta = processar_lembrete_formatado(mensagem, telefone)
+                if resposta:
+                    await enviar_mensagem_whatsapp(telefone, resposta)
+                    return {"status": "ok"}
+
+            elif mensagem_lower == "tabela cron":
+                tabela = (
+                    "⏰ Exemplos de expressões CRON:\n"
+                    "\n* * * * * → Executa a cada minuto\n"
+                    "0 9 * * * → Todos os dias às 09:00\n"
+                    "30 14 * * * → Todos os dias às 14:30\n"
+                    "0 8 * * 1-5 → Segunda a sexta às 08:00\n"
+                    "15 10 15 * * → Dia 15 de cada mês às 10:15\n"
+                    "0 0 1 1 * → 1º de janeiro à meia-noite\n"
+                    "0 18 * * 6 → Todos os sábados às 18:00\n"
+                    "\nFormato: minuto hora dia_do_mes mês dia_da_semana"
+                )
+                await enviar_mensagem_whatsapp(telefone, tabela)
+                return {"status": "ok"}
+            elif mensagem_lower == "lista lembretes":
+                lembretes = listar_lembretes(telefone, schema)
+                if not lembretes:
+                    resposta = "📭 Você ainda não possui lembretes cadastrados."
+                else:
+                    resposta = "📋 *Seus lembretes:*\n\n" + "\n".join(
+                        [f"🆔 {l['id']} - \"{l['mensagem']}\"\n⏰ CRON: `{l['cron']}`\n" for l in lembretes]
+                    )
                 await enviar_mensagem_whatsapp(telefone, resposta)
                 return {"status": "ok"}
+            elif mensagem_lower.startswith("apagar lembrete"):
+                partes = mensagem_lower.split()
+                if len(partes) >= 3 and partes[2].isdigit():
+                    id_lembrete = int(partes[2])
+                    sucesso = apagar_lembrete(telefone, id_lembrete, schema)
+                    resposta = "🗑️ Lembrete apagado com sucesso!" if sucesso else "⚠️ Lembrete não encontrado ou não pertence a você."
+                else:
+                    resposta = "❌ Formato inválido. Use: apagar lembrete [ID]"
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "ok"}
+            elif mensagem_lower.startswith("liberar "):
+                partes = mensagem.split()
+                if len(partes) >= 3:
+                    numero_para_liberar = partes[1]
+                    nome_usuario = " ".join(partes[2:])
+                    if telefone == os.getenv("ADMIN_PHONE"):
+                        try:
+                            liberar_usuario(nome_usuario, numero_para_liberar)
+                            resposta = f"✅ Número {numero_para_liberar} ({nome_usuario}) autorizado com sucesso!"
 
-        elif mensagem_lower == "tabela cron":
-            tabela = (
-                "⏰ Exemplos de expressões CRON:\n"
-                "\n* * * * * → Executa a cada minuto\n"
-                "0 9 * * * → Todos os dias às 09:00\n"
-                "30 14 * * * → Todos os dias às 14:30\n"
-                "0 8 * * 1-5 → Segunda a sexta às 08:00\n"
-                "15 10 15 * * → Dia 15 de cada mês às 10:15\n"
-                "0 0 1 1 * → 1º de janeiro à meia-noite\n"
-                "0 18 * * 6 → Todos os sábados às 18:00\n"
-                "\nFormato: minuto hora dia_do_mes mês dia_da_semana"
-            )
-            await enviar_mensagem_whatsapp(telefone, tabela)
-            return {"status": "ok"}
-        elif mensagem_lower == "lista lembretes":
-            lembretes = listar_lembretes(telefone, schema)
-            if not lembretes:
-                resposta = "📭 Você ainda não possui lembretes cadastrados."
-            else:
-                resposta = "📋 *Seus lembretes:*\n\n" + "\n".join(
-                    [f"🆔 {l['id']} - \"{l['mensagem']}\"\n⏰ CRON: `{l['cron']}`\n" for l in lembretes]
-                )
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "ok"}
-        elif mensagem_lower.startswith("apagar lembrete"):
-            partes = mensagem_lower.split()
-            if len(partes) >= 3 and partes[2].isdigit():
-                id_lembrete = int(partes[2])
-                sucesso = apagar_lembrete(telefone, id_lembrete, schema)
-                resposta = "🗑️ Lembrete apagado com sucesso!" if sucesso else "⚠️ Lembrete não encontrado ou não pertence a você."
-            else:
-                resposta = "❌ Formato inválido. Use: apagar lembrete [ID]"
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "ok"}
-        elif mensagem_lower.startswith("liberar "):
-            partes = mensagem.split()
-            if len(partes) >= 3:
-                numero_para_liberar = partes[1]
-                nome_usuario = " ".join(partes[2:])
-                if telefone == os.getenv("ADMIN_PHONE"):
-                    try:
-                        liberar_usuario(nome_usuario, numero_para_liberar)
-                        resposta = f"✅ Número {numero_para_liberar} ({nome_usuario}) autorizado com sucesso!"
+                            # ✅ Envia mensagem para o novo usuário liberado
+                            texto_bem_vindo = (
+                                f"🎉 Olá usuário!\n"
+                                f"Seu número foi autorizado e agora você pode usar o assistente financeiro via WhatsApp. "
+                                f"Digite 'ajuda' para ver os comandos disponíveis."
+                            )
+                            await enviar_mensagem_whatsapp(numero_para_liberar, texto_bem_vindo)
 
-                        # ✅ Envia mensagem para o novo usuário liberado
-                        texto_bem_vindo = (
-                            f"🎉 Olá usuário!\n"
-                            f"Seu número foi autorizado e agora você pode usar o assistente financeiro via WhatsApp. "
-                            f"Digite 'ajuda' para ver os comandos disponíveis."
+                        except Exception as e:
+                            logger.error("❌ Erro ao liberar usuário: %s", str(e))
+                            resposta = f"❌ Erro ao autorizar o número: {e}"
+                    else:
+                        resposta = "⚠️ Apenas o administrador pode liberar novos usuários."
+                else:
+                    resposta = "❌ Formato inválido. Use: liberar [número] [nome]"
+
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+            elif mensagem_lower.startswith("não liberar "):
+                partes = mensagem.split()
+                if len(partes) >= 2:
+                    numero_negado = partes[2] if len(partes) >= 3 else partes[1]
+                    if telefone == os.getenv("ADMIN_PHONE"):
+                        # Mensagem para o admin (confirmação)
+                        resposta = f"🚫 Número {numero_negado} não foi autorizado."
+
+                        # Mensagem para o usuário negado
+                        texto_usuario = (
+                            "🚫 Seu número **não foi autorizado** a usar o assistente financeiro no momento. "
+                            "Em caso de dúvidas, entre em contato com o administrador."
                         )
-                        await enviar_mensagem_whatsapp(numero_para_liberar, texto_bem_vindo)
-
-                    except Exception as e:
-                        logger.error("❌ Erro ao liberar usuário: %s", str(e))
-                        resposta = f"❌ Erro ao autorizar o número: {e}"
+                        await enviar_mensagem_whatsapp(numero_negado, texto_usuario)
+                    else:
+                        resposta = "⚠️ Apenas o administrador pode negar autorizações."
                 else:
-                    resposta = "⚠️ Apenas o administrador pode liberar novos usuários."
-            else:
-                resposta = "❌ Formato inválido. Use: liberar [número] [nome]"
+                    resposta = "❌ Formato inválido. Use: não liberar [número]"
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
-        elif mensagem_lower.startswith("não liberar "):
-            partes = mensagem.split()
-            if len(partes) >= 2:
-                numero_negado = partes[2] if len(partes) >= 3 else partes[1]
-                if telefone == os.getenv("ADMIN_PHONE"):
-                    # Mensagem para o admin (confirmação)
-                    resposta = f"🚫 Número {numero_negado} não foi autorizado."
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+            elif mensagem_lower == "lista usuarios":
+                if telefone != os.getenv("ADMIN_PHONE"):
+                    await enviar_mensagem_whatsapp(telefone, "⚠️ Apenas o administrador pode acessar essa lista.")
+                    return {"status": "acesso negado"}
 
-                    # Mensagem para o usuário negado
-                    texto_usuario = (
-                        "🚫 Seu número **não foi autorizado** a usar o assistente financeiro no momento. "
-                        "Em caso de dúvidas, entre em contato com o administrador."
+                usuarios = listar_usuarios_autorizados()
+                if not usuarios:
+                    resposta = "📭 Nenhum número autorizado encontrado."
+                else:
+                    resposta = "✅ *Usuários autorizados:*\n\n" + "\n".join(
+                        [f"👤 {nome or '(sem nome)'} - {tel}" for nome, tel, _ in usuarios]
                     )
-                    await enviar_mensagem_whatsapp(numero_negado, texto_usuario)
+
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": "lista enviada"}
+            
+            elif mensagem_lower.startswith("revogar "):
+                numero_para_revogar = mensagem.split(" ")[1]
+                if telefone == os.getenv("ADMIN_PHONE"):
+                    sucesso = revogar_autorizacao(numero_para_revogar)
+                    if sucesso:
+                        resposta = f"🚫 Número {numero_para_revogar} teve a autorização revogada com sucesso!"
+                    else:
+                        resposta = "⚠️ Número não encontrado ou já está desautorizado."
                 else:
-                    resposta = "⚠️ Apenas o administrador pode negar autorizações."
-            else:
-                resposta = "❌ Formato inválido. Use: não liberar [número]"
+                    resposta = "⚠️ Apenas o administrador pode revogar autorizações."
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
-        elif mensagem_lower == "lista usuarios":
-            if telefone != os.getenv("ADMIN_PHONE"):
-                await enviar_mensagem_whatsapp(telefone, "⚠️ Apenas o administrador pode acessar essa lista.")
-                return {"status": "acesso negado"}
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
+            
+            elif mensagem_lower in ["notícias", "boletim", "the news"]:
+                await enviar_mensagem_whatsapp(telefone, "📰 Um instante... buscando o boletim mais recente.")
+                boletim = obter_boletim_the_news()
+                await enviar_mensagem_whatsapp(telefone, boletim)
+                return {"status": "OK", "resposta": "Notícias enviadas"}
+            elif (
+                any(char.isdigit() for char in mensagem)
+                and " " in mensagem
+                and "cep" not in mensagem_lower
+                and not (len(mensagem.split()) >= 2 and mensagem.split()[1].startswith("55"))
+            ):
+                descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
 
-            usuarios = listar_usuarios_autorizados()
-            if not usuarios:
-                resposta = "📭 Nenhum número autorizado encontrado."
-            else:
-                resposta = "✅ *Usuários autorizados:*\n\n" + "\n".join(
-                    [f"👤 {nome or '(sem nome)'} - {tel}" for nome, tel, _ in usuarios]
+                logger.info(
+                    "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
+                    descricao, valor, categoria, meio_pagamento, parcelas
                 )
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": "lista enviada"}
-        
-        elif mensagem_lower.startswith("revogar "):
-            numero_para_revogar = mensagem.split(" ")[1]
-            if telefone == os.getenv("ADMIN_PHONE"):
-                sucesso = revogar_autorizacao(numero_para_revogar)
-                if sucesso:
-                    resposta = f"🚫 Número {numero_para_revogar} teve a autorização revogada com sucesso!"
+                if meio_pagamento in ["pix", "débito"]:
+                    salvar_gasto(descricao, valor, categoria, meio_pagamento, schema, parcelas)
+                    resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
                 else:
-                    resposta = "⚠️ Número não encontrado ou já está desautorizado."
-            else:
-                resposta = "⚠️ Apenas o administrador pode revogar autorizações."
+                    salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema)
+                    resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "OK", "resposta": resposta}
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
+                return {"status": "OK", "resposta": resposta}
+            else:
+                resposta = (
+                    "⚠️ Comando não reconhecido.\n"
+                    "Digite *ajuda* para ver a lista de comandos disponíveis."
+                )
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "comando inválido", "resposta": resposta}
         
-        elif mensagem_lower in ["notícias", "boletim", "the news"]:
-            await enviar_mensagem_whatsapp(telefone, "📰 Um instante... buscando o boletim mais recente.")
-            boletim = obter_boletim_the_news()
-            await enviar_mensagem_whatsapp(telefone, boletim)
-            return {"status": "OK", "resposta": "Notícias enviadas"}
-        elif (
-            any(char.isdigit() for char in mensagem)
-            and " " in mensagem
-            and "cep" not in mensagem_lower
-            and not (len(mensagem.split()) >= 2 and mensagem.split()[1].startswith("55"))
-        ):
-            descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(mensagem)
+        elif mensagem_obj["type"] == "image" or mensagem_obj["type"] == "document":
+            media_id = mensagem_obj[mensagem_obj["type"]]["id"]
+            telefone = mensagem_obj["from"]
+            logger.info(f"📎 Mídia recebida ({mensagem_obj['type']}) com media_id={media_id}")
 
-            logger.info(
-                "✅ Gasto reconhecido: %s | Valor: %.2f | Categoria: %s | Meio de Pagamento: %s | Parcelas: %d",
-                descricao, valor, categoria, meio_pagamento, parcelas
-            )
+            url_midia = await obter_url_midia(media_id)
+            if not url_midia:
+                await enviar_mensagem_whatsapp(telefone, f"❌ Não consegui acessar a {mensagem_obj['type']}. Tente novamente.")
+                return {"status": "erro", "mensagem": f"Não foi possível obter a URL da {mensagem_obj['type']}"}
 
-            if meio_pagamento in ["pix", "débito"]:
-                salvar_gasto(descricao, valor, categoria, meio_pagamento, schema, parcelas)
-                resposta = f"✅ Gasto de R$ {format(valor, ',.2f').replace(',', '.')} em '{categoria}' registrado com sucesso!"
-            else:
-                salvar_fatura(descricao, valor, categoria, meio_pagamento, parcelas, schema)
-                resposta = f"✅ Compra parcelada registrada! {parcelas}x de R$ {valor/parcelas:.2f}"
+            extensao = ".jpeg" if mensagem_obj["type"] == "image" else ".pdf"
+            caminho_arquivo = f"temp_{media_id}{extensao}"
+            await baixar_midia(url_midia, caminho_arquivo)
 
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
-            return {"status": "OK", "resposta": resposta}
+            if mensagem_obj["type"] == "image":
+                resultado = try_all_techniques(caminho_arquivo, media_id)
+                if not resultado:
+                    await enviar_mensagem_whatsapp(telefone, "⚠️ Não consegui extrair nenhuma informação da imagem.")
+                    return {"status": "erro", "mensagem": "Decodificação falhou"}
+
+                tipo = resultado.get("tipo", "Desconhecido").upper()
+                consulta_url = resultado.get("consulta_url")
+                chave = resultado.get("chave")
+
+                if tipo == "QRCODE":
+                    msg = (
+                        f"🔍 QR Code identificado!\nURL de consulta: {consulta_url}\n\n"
+                        "✅ Para continuar:\n1. Acesse o link acima\n2. Clique em *Continuar consulta de NFC-e*\n3. Clique em *Imprimir Danfe* e envie o PDF aqui."
+                    )
+                elif tipo in ["PDF417", "CODE128"]:
+                    msg = (
+                        f"📦 Código de barras detectado!\nChave de Acesso: {chave}\n\n"
+                        "✅ Para consultar:\n1. Acesse: https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g=\n"
+                        "2. Cole a Chave de Acesso\n3. Clique em *Consultar*\n4. Clique em *Preparar documento para impressão* e depois no símbolo de impressora\n"
+                        "5. Salve e envie o PDF aqui."
+                    )
+                else:
+                    msg = "❌ Tipo de código não reconhecido. Por favor envie uma imagem com QR Code ou código de barras."
+
+                await enviar_mensagem_whatsapp(telefone, msg)
+                return {"status": "OK", "mensagem": "Imagem processada"}
+
+            elif mensagem_obj["type"] == "document":
+                nome_arquivo = mensagem_obj["document"].get("filename", f"documento_{media_id}.pdf")
+
+                if "Portal da Nota Fiscal Eletrônica" in nome_arquivo.lower():
+                    dados = processar_codigodebarras_com_pdfplumber(caminho_arquivo)
+                else:
+                    dados = processar_qrcode_com_ocr(caminho_arquivo)
+
+                descricao = gerar_descricao_para_classificacao(dados)
+                await enviar_mensagem_whatsapp(telefone, f"📋 {descricao}\n✅ Gasto registrado com sucesso!")
+                return {"status": "OK", "mensagem": "PDF processado"}
+
         else:
-            resposta = (
-                "⚠️ Comando não reconhecido.\n"
-                "Digite *ajuda* para ver a lista de comandos disponíveis."
+            logger.warning(f"❌ Tipo de mensagem não suportado: {tipo_msg}")
+            await enviar_mensagem_whatsapp(
+                telefone,
+                "⚠️ Tipo de mensagem não reconhecido. Envie texto, imagem com QR Code ou PDF com DANFE."
             )
-            await enviar_mensagem_whatsapp(telefone, resposta)
-            return {"status": "comando inválido", "resposta": resposta}
-
+            return {"status": "ignorado", "mensagem": "Tipo de mídia não suportado"}
     except Exception as e:
         logger.exception("❌ Erro ao processar webhook:")
         return JSONResponse(content={"status": "erro", "mensagem": str(e)}, status_code=500)

@@ -27,6 +27,7 @@ from backend.services.gastos_service import (
 from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
 from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
 from backend.services.token_service import gerar_token_acesso
+from backend.services.noticias import obter_boletim_the_news
 
 # Configuração básica de logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -379,7 +380,12 @@ async def receber_mensagem(request: Request):
 
             await enviar_mensagem_whatsapp(telefone, resposta)
             return {"status": "OK", "resposta": resposta}
-
+        
+        elif mensagem_lower in ["notícias", "boletim", "the news"]:
+            await enviar_mensagem_whatsapp(telefone, "📰 Um instante... buscando o boletim mais recente.")
+            boletim = obter_boletim_the_news()
+            await enviar_mensagem_whatsapp(telefone, boletim)
+            return {"status": "OK", "resposta": "Notícias enviadas"}
         elif (
             any(char.isdigit() for char in mensagem)
             and " " in mensagem

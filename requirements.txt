@@ -36,7 +36,7 @@ webdriver-manager==4.0.1
 beautifulsoup4==4.12.3
 
 # Processamento de imagens e PDF
-opencv-python==4.9.0.80
+opencv-python-headless==4.9.0.80
 pytesseract==0.3.10
 pdfplumber==0.10.3
 pyzbar==0.1.9

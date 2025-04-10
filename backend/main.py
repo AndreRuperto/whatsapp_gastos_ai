@@ -15,21 +15,23 @@ import fasttext
 from backend.services.scheduler import scheduler, agendar_lembrete_cron
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp, obter_url_midia, baixar_midia
 from backend.services.db_init import inicializar_bd
-
 from backend.services.api_service import (
     obter_cotacao_principais, obter_cotacao, buscar_cep, listar_moedas_disponiveis, listar_conversoes_disponiveis, listar_conversoes_disponiveis_moeda, MOEDAS, CONVERSOES, MOEDA_EMOJIS
 )
-
 from backend.services.gastos_service import (
     salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario, mensagem_ja_processada, registrar_mensagem_recebida, listar_lembretes, apagar_lembrete
 )
-
 from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
 from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
 from backend.services.token_service import gerar_token_acesso
 from backend.services.noticias_service import obter_boletim_the_news
-from backend.services.leitura_documento import (
+from backend.services.leitura_service import (
     try_all_techniques, processar_qrcode_com_ocr, processar_codigodebarras_com_pdfplumber, gerar_descricao_para_classificacao
+)
+from services.email_service import (
+    buscar_credenciais_email,
+    salvar_credenciais_email,
+    enviar_resumo_emails
 )
 
 # Configuração básica de logging
@@ -377,6 +379,31 @@ async def receber_mensagem(request: Request):
                 boletim = obter_boletim_the_news()
                 await enviar_mensagem_whatsapp(telefone, boletim)
                 return {"status": "OK", "resposta": "Notícias enviadas"}
+            elif "resumo dos emails" in mensagem.lower():
+                email_user, email_pass = buscar_credenciais_email(telefone)
+                if not email_user or not email_pass:
+                    resposta = (
+                        "📩 Para acessar seus e-mails, preciso das credenciais do Gmail.\n\n"
+                        "Por favor, envie no seguinte formato:\n\n"
+                        "email: seu_email@gmail.com\n"
+                        "senha: sua_senha_de_app"
+                    )
+                    enviar_mensagem_whatsapp(telefone, resposta)
+                else:
+                    status = enviar_resumo_emails(telefone, email_user, email_pass)
+                    enviar_mensagem_whatsapp(telefone, status)
+
+            # Cadastro de credenciais (verifica se o texto começa com 'email:')
+            elif mensagem.lower().startswith("email:"):
+                linhas = mensagem.strip().splitlines()
+                if len(linhas) >= 2 and "senha:" in linhas[1].lower():
+                    email_user = linhas[0].split(":", 1)[1].strip()
+                    email_pass = linhas[1].split(":", 1)[1].strip()
+
+                    salvar_credenciais_email(telefone, email_user, email_pass)
+                    enviar_mensagem_whatsapp(telefone, "✅ Credenciais de e-mail salvas com sucesso! Agora é só mandar 'resumo dos emails'.")
+                else:
+                    enviar_mensagem_whatsapp(telefone, "❌ Formato inválido. Envie assim:\nemail: seu_email@gmail.com\nsenha: sua_senha_de_app")
             elif (
                 any(char.isdigit() for char in mensagem)
                 and " " in mensagem

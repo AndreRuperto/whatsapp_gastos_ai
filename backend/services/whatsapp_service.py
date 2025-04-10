@@ -34,7 +34,7 @@ async def enviar_mensagem_whatsapp(telefone, mensagem):
         logger.exception("❌ Erro inesperado ao enviar mensagem:")
 
 async def obter_url_midia(media_id: str) -> str:
-    url = f"https://graph.facebook.com/v19.0/{media_id}"
+    url = f"https://graph.facebook.com/v22.0/{media_id}"
     headers = {
         "Authorization": f"Bearer {TOKEN}"
     }

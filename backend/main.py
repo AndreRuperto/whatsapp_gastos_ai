@@ -12,6 +12,7 @@ from datetime import datetime
 import re
 import fasttext
 
+from backend.utils import obter_schema_por_telefone
 from backend.services.scheduler import scheduler, agendar_lembrete_cron
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp, obter_url_midia, baixar_midia
 from backend.services.db_init import inicializar_bd
@@ -28,7 +29,7 @@ from backend.services.noticias_service import obter_boletim_the_news
 from backend.services.leitura_service import (
     try_all_techniques, processar_qrcode_com_ocr, processar_codigodebarras_com_pdfplumber, gerar_descricao_para_classificacao
 )
-from services.email_service import (
+from backend.services.email_service import (
     buscar_credenciais_email,
     salvar_credenciais_email,
     enviar_resumo_emails
@@ -499,20 +500,6 @@ async def receber_mensagem(request: Request):
     except Exception as e:
         logger.exception("❌ Erro ao processar webhook:")
         return JSONResponse(content={"status": "erro", "mensagem": str(e)}, status_code=500)
-
-def obter_schema_por_telefone(telefone):
-    """
-    Consulta a tabela 'usuarios' e retorna o nome do schema com base no telefone.
-    """
-    conn = psycopg2.connect(DATABASE_URL)
-    cursor = conn.cursor()
-    cursor.execute("SELECT schema_user FROM usuarios WHERE telefone = %s AND autorizado = true", (telefone,))
-    resultado = cursor.fetchone()
-    nome = resultado[0]
-    cursor.close()
-    conn.close()
-    
-    return nome
 
 def descrever_cron_humanamente(expr):
     minutos, hora, dia, mes, semana = expr.strip().split()

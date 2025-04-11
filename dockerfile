@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
 COPY backend/atualizar_service.py ./backend/atualizar_service.py
 COPY backend/dashboard.py ./backend/dashboard.py
 COPY backend/main.py ./backend/main.py
+COPY backend/utils.py ./backend/utils.py
 
 # Copia apenas as pastas necessárias
 COPY backend/data ./backend/data

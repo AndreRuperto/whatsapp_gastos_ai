@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import pytz
-from services.token_service import validar_token
+from backend.services.token_service import validar_token
 import altair as alt
 
 load_dotenv()

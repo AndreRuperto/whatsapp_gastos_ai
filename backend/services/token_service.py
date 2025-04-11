@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import secrets
-from .db_init import conectar_bd
+from backend.services.db_init import conectar_bd
 import pytz  # <- você pode adicionar ao requirements.txt
 
 def gerar_token_acesso(telefone: str) -> dict:

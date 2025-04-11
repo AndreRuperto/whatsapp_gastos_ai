@@ -17,8 +17,10 @@ def iniciar_driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--log-level=3")
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.binary_location = "/usr/bin/google-chrome"  # Caminho fixo para o Chrome no Docker
 
-    service = Service(ChromeDriverManager().install())
+    # Usando o chromedriver instalado manualmente via Docker
+    service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=options)
 
 # Função para converter HTML em texto simples para WhatsApp

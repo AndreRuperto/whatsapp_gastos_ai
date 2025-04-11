@@ -680,6 +680,21 @@ COMANDOS = [
         "descricao": "Apaga um lembrete específico",
         "admin_only": False,
     },
+    {
+        "comando": "notícias",
+        "descricao": "Envia o boletim mais recente do The News",
+        "admin_only": False,
+    },
+    {
+        "comando": "resumo dos emails",
+        "descricao": "Busca os e-mails recentes do seu Gmail",
+        "admin_only": False,
+    },
+    {
+        "comando": "email: seu_email + senha: sua_senha",
+        "descricao": "Salva suas credenciais de e-mail para acesso",
+        "admin_only": False,
+    },
     # 👑 Admin
     {
         "comando": "liberar [telefone] [nome]",

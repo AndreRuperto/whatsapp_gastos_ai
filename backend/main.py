@@ -32,7 +32,8 @@ from backend.services.leitura_service import (
 from backend.services.email_service import (
     buscar_credenciais_email,
     salvar_credenciais_email,
-    enviar_resumo_emails
+    formatar_emails_para_whatsapp,
+    get_emails_info
 )
 
 # Configuração básica de logging
@@ -389,12 +390,12 @@ async def receber_mensagem(request: Request):
                         "email: seu_email@gmail.com\n"
                         "senha: sua_senha_de_app"
                     )
-                    enviar_mensagem_whatsapp(telefone, resposta)
                 else:
-                    status = enviar_resumo_emails(telefone, email_user, email_pass)
-                    enviar_mensagem_whatsapp(telefone, status)
+                    emails = get_emails_info(email_user, email_pass)
+                    resposta = formatar_emails_para_whatsapp(emails)
 
-            # Cadastro de credenciais (verifica se o texto começa com 'email:')
+                enviar_mensagem_whatsapp(telefone, resposta)
+
             elif mensagem.lower().startswith("email:"):
                 linhas = mensagem.strip().splitlines()
                 if len(linhas) >= 2 and "senha:" in linhas[1].lower():
@@ -405,6 +406,7 @@ async def receber_mensagem(request: Request):
                     enviar_mensagem_whatsapp(telefone, "✅ Credenciais de e-mail salvas com sucesso! Agora é só mandar 'resumo dos emails'.")
                 else:
                     enviar_mensagem_whatsapp(telefone, "❌ Formato inválido. Envie assim:\nemail: seu_email@gmail.com\nsenha: sua_senha_de_app")
+
             elif (
                 any(char.isdigit() for char in mensagem)
                 and " " in mensagem

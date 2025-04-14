@@ -15,7 +15,7 @@ def salvar_credenciais_email(telefone, email_user, email_pass):
     
     # Insere nova credencial vinculada ao número
     cur.execute(
-        f"""INSERT INTO {schema}.email (telefone, email_user, email_pass, criado_em)
+        f"""INSERT INTO {schema}.email (telefone, email_user, email_pass, data_inclusao)
             VALUES (%s, %s, %s, NOW());""",
         (telefone, email_user, email_pass)
     )
@@ -97,7 +97,7 @@ def formatar_emails_para_whatsapp(emails_info: list) -> str:
     header = "📩 Você recebeu novos e-mails:\n\n"
     footer = "\n📬 Verifique o Gmail para ler o conteúdo completo."
     mensagem = header
-    for i, info in enumerate(emails_info, 1):
+    for i, info in enumerate(reversed(emails_info), 1):
         mensagem += (
             f"{i}. De: {info['from']}\n"
             f"   Assunto: {info['subject']}\n"

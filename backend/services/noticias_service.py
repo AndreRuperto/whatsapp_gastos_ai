@@ -15,116 +15,135 @@ def iniciar_driver():
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--log-level=3")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    options.binary_location = "/usr/bin/google-chrome"  # Caminho fixo para o Chrome no Docker
+    options.binary_location = "/usr/bin/google-chrome"
 
-    # Usando o chromedriver instalado manualmente via Docker
+    # Use o caminho direto do ChromeDriver (já instalado no Docker)
     service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=options)
 
 # Função para converter HTML em texto simples para WhatsApp
+def formatar_titulo(texto: str) -> str:
+    if "/" in texto and texto.count("/") == 2:
+        return datetime.today().strftime("%d-%m-%Y")
+    return texto.lower().replace(" ", "-")
+
 def html_para_whatsapp_formatado(html):
     soup = BeautifulSoup(html, "html.parser")
-    for tag in soup.find_all(["button", "a", "style", "script"]):
+
+    # Remove elementos visuais e desnecessários
+    for tag in soup(["style", "script", "button", "header", "footer", "img", "svg"]):
         tag.decompose()
+
+    # Negrito e itálico
+    for bold in soup.find_all(['b', 'strong']):
+        bold_text = bold.get_text()
+        bold.replace_with(f"*{bold_text}*")
+
+    for italic in soup.find_all(['i', 'em']):
+        italic_text = italic.get_text()
+        italic.replace_with(f"_{italic_text}_")
+
+    # Substitui listas <li> por linha com traço (-)
+    for li in soup.find_all("li"):
+        li.string = f"- {li.get_text(strip=True)}"
+
     texto_formatado = soup.get_text(separator="\n", strip=True)
     return texto_formatado.strip()
 
-# Extração baseada em blocos reais do texto
-def extrair_blocos_pelo_titulo_bruto(texto):
-    titulos = ["NA EDIÇÃO DE HOJE", "MUNDO", "BRASIL", "TECNOLOGIA", "STAT OF THE DAY", "RECADO DA EQUIPE"]
-    indices = []
-
-    for titulo in titulos:
-        pos = texto.find(titulo)
-        if pos != -1:
-            indices.append((titulo, pos))
-
-    indices.sort(key=lambda x: x[1])
+def extrair_blocos_por_xpath(driver):
     blocos = []
-    for i in range(len(indices)):
-        _, start = indices[i]
-        end = indices[i + 1][1] if i + 1 < len(indices) else len(texto)
-        conteudo = texto[start + len(titulos[i]):end].strip()
-        blocos.append(conteudo if conteudo else "Conteúdo não encontrado.")
+    blocos_divs = driver.find_elements(By.XPATH, '//*[@id="content-blocks"]/div')
 
+    for div in blocos_divs:
+        try:
+            titulo = div.find_element(By.XPATH, './div[1]/h5/span/b').text.strip().upper()
+            conteudo = div.get_attribute("innerHTML")
+            conteudo_formatado = html_para_whatsapp_formatado(conteudo)
+            blocos.append((titulo, conteudo_formatado))
+        except:
+            continue
     return blocos
 
-# Formatar texto para WhatsApp
 def formatar_conteudo_para_whatsapp(data, blocos):
-    manchete = "sem plateia\nbom dia. tem dias em que a maior conquista é fazer o que precisa ser feito mesmo sem ninguém vendo. sem aplauso, sem post, sem confete. só você com você mesmo."
+    limite = 4096
+    mensagens = []
 
-    return f"""
-🗞️ *the news*  
+    header = f"""
+🗒️ *the news*  
 📅 *{data}*  
 ⏳ *Tempo de leitura estimado: 15-17 min*  
 
 ---
+""".strip()
 
-📝 *Manchete do Dia:*  
-{manchete}
+    atual = header
+    for titulo, conteudo in blocos:
+        emoji = "🧹"
+        if "MUNDO" in titulo:
+            emoji = "🌎"
+        elif "BRASIL" in titulo:
+            emoji = "🇧🇷"
+        elif "TECNOLOGIA" in titulo:
+            emoji = "💻"
+        elif "STAT" in titulo:
+            emoji = "📉"
+        elif "RECADO" in titulo:
+            emoji = "📣"
+        elif "MANCHETE" in titulo:
+            emoji = "📝"
+        elif "EDIÇÃO" in titulo:
+            emoji = "📌"
 
----
+        bloco = f"\n\n{emoji} *{titulo}*\n{conteudo}"
 
-📌 *Na edição de hoje:*  
-{blocos[0]}
+        if len(atual) + len(bloco) > limite:
+            mensagens.append(atual.strip())
+            atual = bloco
+        else:
+            atual += bloco
 
----
-
-🌎 *MUNDO*  
-{blocos[1]}
-
----
-
-🇧🇷 *BRASIL*  
-{blocos[2]}
-
----
-
-💻 *TECNOLOGIA*  
-{blocos[3]}
-
----
-
-📉 *STAT OF THE DAY*  
-{blocos[4]}
-
----
-
-📣 *RECADO DA EQUIPE*  
-{blocos[5]}
-
----
-"""
+    mensagens.append(atual.strip())
+    return mensagens
 
 def obter_boletim_the_news():
-    data_hoje = datetime.today().strftime("%d-%m-%Y")
-    url = f"https://thenewscc.beehiiv.com/p/{data_hoje}"
+    url = "https://thenewscc.beehiiv.com"
     driver = iniciar_driver()
     driver.get(url)
 
     try:
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/main/div/div[3]/div[2]/div'))
+            EC.presence_of_element_located((
+                By.XPATH,
+                '/html/body/div[1]/div/main/div/div[4]/div/div/div/div/div[3]/div[1]/div[2]/div/a[1]/div/div[2]/h2'
+            ))
         )
         time.sleep(1)
-    except:
-        print("❌ Não foi possível localizar as notícias.")
-        driver.quit()
-        exit()
 
-    try:
-        conteudo = driver.find_element(By.XPATH, '/html/body/div[1]/div/main/div/div[3]/div[2]/div')
-        inner_html = conteudo.get_attribute("innerHTML")
-        texto_formatado = html_para_whatsapp_formatado(inner_html)
+        titulo_elemento = driver.find_element(
+            By.XPATH,
+            '/html/body/div[1]/div/main/div/div[4]/div/div/div/div/div[3]/div[1]/div[2]/div/a[1]/div/div[2]/h2'
+        )
+        titulo_formatado = formatar_titulo(titulo_elemento.text)
+        url_boletim = f"https://thenewscc.beehiiv.com/p/{titulo_formatado}"
 
-        blocos = extrair_blocos_pelo_titulo_bruto(texto_formatado)
-        data_pt = datetime.today().strftime("%d/%m/%Y")
-        mensagem_whatsapp = formatar_conteudo_para_whatsapp(data_pt, blocos)
+        driver.get(url_boletim)
 
-        print(mensagem_whatsapp)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "content-blocks"))
+        )
+        time.sleep(1)
+
+        blocos = extrair_blocos_por_xpath(driver)
+        if len(blocos) < 3:
+            print("❌ Boletim incompleto ou estrutura inesperada.")
+            print("🔎 Blocos encontrados:", [b[0] for b in blocos])
+        else:
+            data_pt = datetime.today().strftime("%d/%m/%Y")
+            return formatar_conteudo_para_whatsapp(data_pt, blocos)
+
     except Exception as e:
-        print(f"⚠️ Erro ao tentar capturar o conteúdo: {e}")
-
-    driver.quit()
+        print(f"❌ Erro ao capturar o boletim: {e}")
+    finally:
+        driver.quit()

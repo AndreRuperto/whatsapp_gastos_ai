@@ -12,7 +12,9 @@ from datetime import datetime
 import re
 import fasttext
 
-from backend.utils import obter_schema_por_telefone
+from backend.utils import (
+    mensagem_ja_processada, registrar_mensagem_recebida, obter_schema_por_telefone
+)
 from backend.services.scheduler import scheduler, agendar_lembrete_cron
 from backend.services.whatsapp_service import enviar_mensagem_whatsapp, obter_url_midia, baixar_midia
 from backend.services.db_init import inicializar_bd
@@ -20,7 +22,7 @@ from backend.services.api_service import (
     obter_cotacao_principais, obter_cotacao, buscar_cep, listar_moedas_disponiveis, listar_conversoes_disponiveis, listar_conversoes_disponiveis_moeda, MOEDAS, CONVERSOES, MOEDA_EMOJIS
 )
 from backend.services.gastos_service import (
-    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario, mensagem_ja_processada, registrar_mensagem_recebida, listar_lembretes, apagar_lembrete
+    salvar_gasto, salvar_fatura, calcular_total_gasto, pagar_fatura, registrar_salario, listar_lembretes, apagar_lembrete
 )
 from backend.services.autorizacao_service import verificar_autorizacao, liberar_usuario
 from backend.services.usuarios_service import listar_usuarios_autorizados, revogar_autorizacao
@@ -125,6 +127,16 @@ async def receber_mensagem(request: Request):
         # Proteção e roteamento por tipo de mídia
         tipo_msg = mensagem_obj.get("type")
 
+        if mensagem_ja_processada(mensagem_id):
+            logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
+            return JSONResponse(content={
+                "status": "ignorado",
+                "mensagem": "Mensagem duplicada ignorada."
+            }, status_code=200)
+
+        # Registra a mensagem recebida no banco
+        registrar_mensagem_recebida(mensagem_id, telefone, tipo_msg)
+
         if tipo_msg == "text":
             mensagem = mensagem_obj["text"]["body"].strip()
             mensagem_lower = mensagem.lower()
@@ -150,12 +162,6 @@ async def receber_mensagem(request: Request):
             if not schema:
                 logger.error(f"⚠️ Usuário {telefone} sem schema autorizado.")
                 return JSONResponse(content={"status": "erro", "mensagem": "Usuário não possui schema vinculado."}, status_code=403)
-            
-            if mensagem_ja_processada(mensagem_id):
-                logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
-                return JSONResponse(content={"status": "ignorado", "mensagem": "Mensagem duplicada ignorada."}, status_code=200)
-
-            registrar_mensagem_recebida(mensagem_id)
 
             partes = mensagem.split()
             if mensagem_lower in ["ajuda", "menu", "comandos"]:
@@ -378,9 +384,14 @@ async def receber_mensagem(request: Request):
             
             elif mensagem_lower in ["notícias", "boletim", "the news"]:
                 await enviar_mensagem_whatsapp(telefone, "📰 Um instante... buscando o boletim mais recente.")
-                boletim = obter_boletim_the_news()
-                await enviar_mensagem_whatsapp(telefone, boletim)
-                return {"status": "OK", "resposta": "Notícias enviadas"}
+                mensagens = obter_boletim_the_news()
+                if not mensagens:
+                    await enviar_mensagem_whatsapp(telefone, "❌ Não foi possível carregar o boletim de hoje.")
+                    return {"status": "Erro", "resposta": "Falha ao capturar o boletim."}
+                for bloco in mensagens:
+                    await enviar_mensagem_whatsapp(telefone, bloco)
+                return {"status": "OK", "resposta": "Boletim enviado com sucesso"}
+
             elif "resumo dos emails" in mensagem.lower():
                 email_user, email_pass = buscar_credenciais_email(telefone)
                 if not email_user or not email_pass:
@@ -394,7 +405,7 @@ async def receber_mensagem(request: Request):
                     emails = get_emails_info(email_user, email_pass)
                     resposta = formatar_emails_para_whatsapp(emails)
 
-                enviar_mensagem_whatsapp(telefone, resposta)
+                await enviar_mensagem_whatsapp(telefone, resposta)
 
             elif mensagem.lower().startswith("email:"):
                 linhas = mensagem.strip().splitlines()
@@ -403,10 +414,15 @@ async def receber_mensagem(request: Request):
                     email_pass = linhas[1].split(":", 1)[1].strip()
 
                     salvar_credenciais_email(telefone, email_user, email_pass)
-                    enviar_mensagem_whatsapp(telefone, "✅ Credenciais de e-mail salvas com sucesso! Agora é só mandar 'resumo dos emails'.")
+                    await enviar_mensagem_whatsapp(
+                        telefone,
+                        "✅ Credenciais de e-mail salvas com sucesso! Agora é só mandar 'resumo dos emails'."
+                    )
                 else:
-                    enviar_mensagem_whatsapp(telefone, "❌ Formato inválido. Envie assim:\nemail: seu_email@gmail.com\nsenha: sua_senha_de_app")
-
+                    await enviar_mensagem_whatsapp(
+                        telefone,
+                        "❌ Formato inválido. Envie assim:\nemail: seu_email@gmail.com\nsenha: sua_senha_de_app"
+                    )
             elif (
                 any(char.isdigit() for char in mensagem)
                 and " " in mensagem

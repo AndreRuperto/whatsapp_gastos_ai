@@ -35,7 +35,8 @@ from backend.services.email_service import (
     buscar_credenciais_email,
     salvar_credenciais_email,
     formatar_emails_para_whatsapp,
-    get_emails_info
+    get_emails_info,
+    listar_emails_cadastrados
 )
 
 # Configuração básica de logging
@@ -392,36 +393,184 @@ async def receber_mensagem(request: Request):
                     await enviar_mensagem_whatsapp(telefone, bloco)
                 return {"status": "OK", "resposta": "Boletim enviado com sucesso"}
 
-            elif "resumo dos emails" in mensagem.lower():
-                email_user, email_pass = buscar_credenciais_email(telefone)
-                if not email_user or not email_pass:
+            elif "resumo dos emails" in mensagem_lower or "resumo de emails" in mensagem_lower or re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\s+\d{2}-\d{2}-\d{4})?$', mensagem.strip()):
+    # Processa os parametros: email específico e data (ambos opcionais)
+                email_especifico = None
+                data_consulta = None
+                
+                # Verifica se há um email direto como comando
+                email_direto = re.match(r'^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(\s+(\d{2}-\d{2}-\d{4}))?$', mensagem.strip())
+                if email_direto:
+                    email_especifico = email_direto.group(1)
+                    data_consulta = email_direto.group(3) if email_direto.group(3) else None
+                else:
+                    # Busca email e data na instrução "resumo de emails"
+                    padrao_completo = re.search(r'resumo d[eo]s? emails\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(\s+(\d{2}-\d{2}-\d{4}))?', mensagem_lower)
+                    if padrao_completo:
+                        email_especifico = padrao_completo.group(1)
+                        data_consulta = padrao_completo.group(3) if padrao_completo.group(3) else None
+                    else:
+                        # Verifica se tem apenas a data, sem email específico
+                        padrao_apenas_data = re.search(r'resumo d[eo]s? emails\s+(\d{2}-\d{2}-\d{4})', mensagem_lower)
+                        if padrao_apenas_data:
+                            data_consulta = padrao_apenas_data.group(1)
+                
+                # Debug - Anotar nos logs o que foi detectado
+                logger.info(f"Comando processado - Email: {email_especifico}, Data: {data_consulta}")
+                
+                # Valida o formato da data, se fornecida
+                if data_consulta:
+                    try:
+                        datetime.strptime(data_consulta, "%d-%m-%Y")
+                    except ValueError:
+                        resposta = "❌ Formato de data inválido. Use o formato DD-MM-AAAA, por exemplo: 14-04-2025"
+                        await enviar_mensagem_whatsapp(telefone, resposta)
+                        return {"status": "erro", "resposta": resposta}
+                
+                # Busca os emails cadastrados
+                emails_cadastrados = listar_emails_cadastrados(telefone)
+                
+                # Se não tiver emails cadastrados
+                if not emails_cadastrados:
                     resposta = (
                         "📩 Para acessar seus e-mails, preciso das credenciais do Gmail.\n\n"
                         "Por favor, envie no seguinte formato:\n\n"
                         "email: seu_email@gmail.com\n"
-                        "senha: sua_senha_de_app"
+                        "senha: sua_senha_de_app\n"
+                        "descricao: Email Pessoal (opcional)"
                     )
+                    await enviar_mensagem_whatsapp(telefone, resposta)
+                    return {"status": "OK", "resposta": resposta}
+                
+                # Se tem email específico solicitado
+                if email_especifico:
+                    # Verifica se esse email existe nos cadastrados
+                    email_encontrado = False
+                    for email_user, _ in emails_cadastrados:
+                        if email_user.lower() == email_especifico.lower():
+                            email_encontrado = True
+                            email_especifico = email_user  # Usar a versão exata cadastrada (preservando maiúsculas/minúsculas)
+                            break
+                    
+                    if not email_encontrado:
+                        resposta = (
+                            f"❌ O email {email_especifico} não está cadastrado.\n\n"
+                            "Emails cadastrados:\n"
+                        )
+                        for email_user, descricao in emails_cadastrados:
+                            resposta += f"• {email_user} - {descricao}\n"
+                        
+                        await enviar_mensagem_whatsapp(telefone, resposta)
+                        return {"status": "OK", "resposta": resposta}
+                    
+                    # Busca email específico
+                    email_user, email_pass = buscar_credenciais_email(telefone, email_especifico)
+                    if not email_user or not email_pass:
+                        resposta = f"❌ Não foi possível encontrar credenciais válidas para {email_especifico}."
+                        await enviar_mensagem_whatsapp(telefone, resposta)
+                        return {"status": "erro", "resposta": resposta}
+                        
+                    # Prepara a mensagem de confirmação
+                    if data_consulta:
+                        try:
+                            data_obj = datetime.strptime(data_consulta, "%d-%m-%Y")
+                            data_formatada = data_obj.strftime("%d/%m/%Y")
+                            mensagem_busca = f"🔍 Buscando emails de {data_formatada} em {email_user}..."
+                        except:
+                            mensagem_busca = f"🔍 Buscando emails em {email_user}..."
+                    else:
+                        mensagem_busca = f"🔍 Buscando emails de hoje em {email_user}..."
+                    
+                    await enviar_mensagem_whatsapp(telefone, mensagem_busca)
+                    
+                    # Busca emails - Passa explicitamente a data_consulta
+                    emails = get_emails_info(email_user, email_pass, data_consulta)
+                    
+                    # Debug
+                    logger.info(f"Emails encontrados: {len(emails)} para data {data_consulta}")
+                    
+                    resposta = formatar_emails_para_whatsapp(emails, email_user, data_consulta)
+                
+                # Se tem múltiplos emails cadastrados e nenhum especificado
+                elif len(emails_cadastrados) > 1:
+                    # Se tiver data mas não email específico, pede para escolher o email
+                    if data_consulta:
+                        data_formatada = datetime.strptime(data_consulta, "%d-%m-%Y").strftime("%d/%m/%Y")
+                        resposta = f"📩 Você tem vários emails cadastrados. Para qual deseja ver emails de {data_formatada}?\n\n"
+                        for email_user, descricao in emails_cadastrados:
+                            resposta += f"• {email_user} - {descricao}\n"
+                        resposta += f"\nEnvie 'resumo de emails SEUEMAIL@gmail.com {data_consulta}' ou apenas 'SEUEMAIL@gmail.com {data_consulta}'"
+                    else:
+                        resposta = "📩 Você tem vários emails cadastrados. Qual deseja consultar?\n\n"
+                        for email_user, descricao in emails_cadastrados:
+                            resposta += f"• {email_user} - {descricao}\n"
+                        resposta += "\nEnvie 'resumo de emails SEUEMAIL@gmail.com' ou apenas 'SEUEMAIL@gmail.com'"
+                        resposta += "\nVocê também pode especificar uma data: 'resumo de emails SEUEMAIL@gmail.com DD-MM-AAAA'"
+                
+                # Se tem apenas um email cadastrado
                 else:
-                    emails = get_emails_info(email_user, email_pass)
-                    resposta = formatar_emails_para_whatsapp(emails)
-
+                    email_user, email_pass = buscar_credenciais_email(telefone)
+                    
+                    # Prepara mensagem de confirmação
+                    if data_consulta:
+                        try:
+                            data_obj = datetime.strptime(data_consulta, "%d-%m-%Y")
+                            data_formatada = data_obj.strftime("%d/%m/%Y")
+                            mensagem_busca = f"🔍 Buscando emails de {data_formatada} em {email_user}..."
+                        except:
+                            mensagem_busca = f"🔍 Buscando emails em {email_user}..."
+                    else:
+                        mensagem_busca = f"🔍 Buscando emails de hoje em {email_user}..."
+                    
+                    await enviar_mensagem_whatsapp(telefone, mensagem_busca)
+                    
+                    # Busca emails - Passa explicitamente a data_consulta
+                    emails = get_emails_info(email_user, email_pass, data_consulta)
+                    
+                    # Debug
+                    logger.info(f"Emails encontrados: {len(emails)} para data {data_consulta}")
+                    
+                    resposta = formatar_emails_para_whatsapp(emails, email_user, data_consulta)
+                
                 await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
 
             elif mensagem.lower().startswith("email:"):
                 linhas = mensagem.strip().splitlines()
                 if len(linhas) >= 2 and "senha:" in linhas[1].lower():
                     email_user = linhas[0].split(":", 1)[1].strip()
                     email_pass = linhas[1].split(":", 1)[1].strip()
-
-                    salvar_credenciais_email(telefone, email_user, email_pass)
+                    
+                    # Verifica se tem descrição personalizada
+                    descricao = None
+                    if len(linhas) >= 3 and "descricao:" in linhas[2].lower():
+                        descricao = linhas[2].split(":", 1)[1].strip()
+                    
+                    # Valida o formato do email
+                    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_user):
+                        await enviar_mensagem_whatsapp(
+                            telefone,
+                            "❌ Formato de email inválido. Certifique-se de que seu email está correto."
+                        )
+                        return {"status": "erro", "mensagem": "Formato de email inválido"}
+                    
+                    # Salva (ou atualiza) o email
+                    salvar_credenciais_email(telefone, email_user, email_pass, descricao)
                     await enviar_mensagem_whatsapp(
                         telefone,
-                        "✅ Credenciais de e-mail salvas com sucesso! Agora é só mandar 'resumo dos emails'."
+                        f"✅ Credenciais de e-mail salvas com sucesso! ({email_user})\n\n"
+                        f"Para consultar, envie:\n"
+                        f"• 'resumo dos emails' (lista todos os emails)\n"
+                        f"• 'resumo dos emails {email_user}' (este email específico)\n"
+                        f"• ou simplesmente '{email_user}'"
                     )
                 else:
                     await enviar_mensagem_whatsapp(
                         telefone,
-                        "❌ Formato inválido. Envie assim:\nemail: seu_email@gmail.com\nsenha: sua_senha_de_app"
+                        "❌ Formato inválido. Envie assim:\n"
+                        "email: seu_email@gmail.com\n"
+                        "senha: sua_senha_de_app\n"
+                        "descricao: Email pessoal (opcional)"
                     )
             elif (
                 any(char.isdigit() for char in mensagem)
@@ -454,7 +603,7 @@ async def receber_mensagem(request: Request):
                 await enviar_mensagem_whatsapp(telefone, resposta)
                 return {"status": "comando inválido", "resposta": resposta}
         
-        elif mensagem_obj["type"] == "image" or mensagem_obj["type"] == "document":
+        elif tipo_msg == "image" or tipo_msg == "document":
             media_id = mensagem_obj[mensagem_obj["type"]]["id"]
             telefone = mensagem_obj["from"]
             logger.info(f"📎 Mídia recebida ({mensagem_obj['type']}) com media_id={media_id}")
@@ -703,14 +852,24 @@ COMANDOS = [
         "descricao": "Envia o boletim mais recente do The News",
         "admin_only": False,
     },
-    {
-        "comando": "resumo dos emails",
-        "descricao": "Busca os e-mails recentes do seu Gmail",
+        {
+        "comando": "email: seu_email + senha: sua_senha + descricao: nome",
+        "descricao": "Salva suas credenciais de e-mail (descrição opcional)",
         "admin_only": False,
     },
     {
-        "comando": "email: seu_email + senha: sua_senha",
-        "descricao": "Salva suas credenciais de e-mail para acesso",
+        "comando": "resumo dos emails",
+        "descricao": "Lista seus emails recentes (ou solicita escolher qual email)",
+        "admin_only": False,
+    },
+    {
+        "comando": "resumo dos emails [email]",
+        "descricao": "Busca emails recentes da conta específica",
+        "admin_only": False,
+    },
+    {
+        "comando": "resumo dos emails [email] [DD-MM-AAAA]",
+        "descricao": "Busca emails de data específica (opcional)",
         "admin_only": False,
     },
     # 👑 Admin

@@ -70,6 +70,18 @@ def liberar_usuario(nome, telefone):
             data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Adição da tabela de emails com suporte a múltiplos emails
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS {schema}.email (
+            id SERIAL PRIMARY KEY,
+            telefone TEXT NOT NULL,
+            email_user TEXT NOT NULL,
+            email_pass TEXT NOT NULL,
+            descricao TEXT,
+            data_inclusao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     conn.commit()
     cursor.close()

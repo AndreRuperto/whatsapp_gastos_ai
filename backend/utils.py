@@ -42,3 +42,55 @@ def registrar_mensagem_recebida(mensagem_id: str, telefone: str = "", tipo: str 
     conn.commit()
     cursor.close()
     conn.close()
+
+def salvar_localizacao_usuario(telefone, latitude, longitude):
+    """Salva a localização atual do usuário para uso posterior"""
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    schema = obter_schema_por_telefone(telefone)
+    
+    # Cria tabela se não existir
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS {schema}.localizacoes_usuario (
+            id SERIAL PRIMARY KEY,
+            telefone TEXT,
+            latitude FLOAT,
+            longitude FLOAT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Insere nova localização
+    cursor.execute(f"""
+        INSERT INTO {schema}.localizacoes_usuario (telefone, latitude, longitude)
+        VALUES (%s, %s, %s)
+    """, (telefone, latitude, longitude))
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+def obter_ultima_localizacao(telefone):
+    """Obtém a localização mais recente do usuário"""
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    schema = obter_schema_por_telefone(telefone)
+    
+    cursor.execute(f"""
+        SELECT latitude, longitude, timestamp FROM {schema}.localizacoes_usuario
+        WHERE telefone = %s
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """, (telefone,))
+    
+    resultado = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if resultado:
+        return {
+            "latitude": resultado[0],
+            "longitude": resultado[1],
+            "timestamp": resultado[2]
+        }
+    return None

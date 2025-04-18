@@ -6,10 +6,14 @@ import pytesseract
 import pdfplumber
 from pyzbar.pyzbar import decode as pyzbar_decode
 from pyzxing import BarCodeReader
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import io
 from pdf2image import convert_from_path
 import contextlib
 from time import sleep
+import logging
+
+logger = logging.getLogger(__name__)
 
 # # Configuração para ambiente local - ajuste para o Docker se necessário
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -348,21 +352,92 @@ def processar_qrcode_com_ocr(caminho_pdf):
 
     produtos = extrair_produtos(texto)
 
-    print(f"🏪 Loja: {loja.group(1).strip() if loja else 'Não encontrado'}")
-    print(f"🧾 CNPJ: {cnpj.group(1) if cnpj else 'Não encontrado'}")
+    texto_whatsapp = (
+        f"🏪 Loja: {loja.group(1).strip() if loja else 'Não encontrado'}\n"
+        f"🧾 CNPJ: {cnpj.group(1) if cnpj else 'Não encontrado'}\n"
+        f"\n🛒 Produtos:\n"
+    )
+    
     for p in produtos:
-        print(f"🛒 Produto: {p['nome']} | Qtd: {p['quantidade']} | Unit: R$ {p['unitario']} | Total: R$ {p['total']}")
-    print(f"💰 Total: R$ {valor.group(1) if valor else 'Não encontrado'}")
-    print(f"💳 Pagamento: {pagamento.group(1).strip() if pagamento else 'Não encontrado'}")
-    print(f"🕒 Emissão: {emissao.group(1) if emissao else 'Não encontrado'}")
-    print(f"🔑 Chave: {chave.group(1) if chave else 'Não encontrado'}")
+        texto_whatsapp += f"📦 Produto: {p['nome']} | Qtd: {p['quantidade']} | Unit: R$ {p['unitario']} | Total: R$ {p['total']}\n"
+    
+    texto_whatsapp += f"\n💰 Total: R$ {valor.group(1) if valor else 'Não encontrado'}\n"
+    texto_whatsapp += f"💳 Pagamento: {pagamento.group(1).strip() if pagamento else 'Não encontrado'}\n"
+    texto_whatsapp += f"🕒 Emissão: {emissao.group(1) if emissao else 'Não encontrado'}\n"
 
     return {
         "emitente_nome": loja.group(1).strip() if loja else "Não encontrado",
         "valor_total_nota": valor.group(1) if valor else "0",
         "forma_pagamento": pagamento.group(1).strip() if pagamento else "Não encontrado",
-        "produtos": produtos
+        "produtos": produtos,
+        "texto_formatado": texto_whatsapp
     }
+
+def formatar_qrcode_para_whatsapp(dados):
+    texto_whatsapp = "📝 *Comprovante de compra detectado:*\n\n"
+    
+    # Adicionar informações da loja
+    texto_whatsapp += f"🏪 Loja: {dados.get('emitente_nome', 'Não identificada')}\n"
+    
+    # Adicionar produtos
+    texto_whatsapp += "\n📋 *Produtos:*\n"
+    produtos = dados.get('produtos', [])
+    for p in produtos:
+        nome = p.get('nome', p.get('descricao', 'Produto'))
+        qtd = p.get('quantidade', '1')
+        unit = p.get('unitario', '0')
+        total = p.get('total', '0')
+        texto_whatsapp += f"📦 {nome} | Qtd: {qtd} | Unit: R$ {unit} | Total: R$ {total}\n"
+    
+    # Adicionar valor total e forma de pagamento
+    texto_whatsapp += f"\n💰 Total: R$ {dados.get('valor_total_nota', '0')}\n"
+    texto_whatsapp += f"💳 Pagamento: {dados.get('forma_pagamento', 'Não identificado')}\n"
+    
+    return texto_whatsapp
+
+def formatar_codigodebarras_para_whatsapp(dados):
+    """
+    Formata os dados de um código de barras para envio via WhatsApp,
+    usando emojis e formatação apropriada.
+    """
+    texto = "🧾 *NOTA FISCAL ELETRÔNICA*\n\n"
+    
+    # Dados básicos
+    texto += f"🔑 Chave de Acesso: {dados['chave_acesso']}\n"
+    texto += f"📄 Modelo: {dados['modelo']} | Série: {dados['serie']} | Número: {dados['numero']}\n"
+    texto += f"🕒 Emissão: {dados['data_emissao']} {dados['hora_emissao']} | Saída: {dados['data_saida']} {dados['hora_saida']}\n\n"
+    
+    # Lista de produtos
+    produtos = dados.get('produtos', [])
+    if produtos:
+        texto += "*📋 PRODUTOS:*\n"
+        for p in produtos:
+            texto += (
+                f"🛒 {p['descricao']}\n"
+                f"    Qtd: {p['quantidade']} {p['unidade']} | "
+                f"Valor: R$ {p['valor']}\n"
+            )
+        texto += "\n"
+    
+    # Dados financeiros
+    texto += f"💰 *VALOR TOTAL: R$ {dados['valor_total_nota']}*\n\n"
+    
+    # Dados da empresa
+    texto += f"🏢 Emitente: {dados['emitente_nome']}\n"
+    texto += f"📝 CNPJ: {dados['emitente_cnpj']} | IE: {dados['emitente_ie']} | UF: {dados['emitente_uf']}\n\n"
+    
+    # Dados do destinatário
+    texto += f"👤 Destinatário: {dados['destinatario_nome']}\n"
+    texto += f"🪪 CPF: {dados['destinatario_cpf']} | UF: {dados['destinatario_uf']}\n\n"
+    
+    # Informações adicionais
+    texto += f"📦 Natureza: {dados['natureza_operacao']} | Tipo: {dados['tipo_operacao']}\n"
+    texto += f"💳 Pagamento: {dados['descricao_meio_pagamento']}\n"
+    texto += f"📌 Situação: {dados['situacao_atual']}\n"
+    texto += f"📨 Protocolo: {dados['protocolo_autorizacao']}\n"
+    texto += f"📅 Autorizado em: {dados['data_autorizacao']}\n"
+    
+    return texto
 
 def processar_codigodebarras_com_pdfplumber(caminho_pdf):
     with suprimir_saida_pdfminer():
@@ -383,31 +458,264 @@ def gerar_descricao_para_classificacao(dados, produtos=None):
         descricao_produtos = " ".join(nomes_prod)
     return f"compra na loja {loja.lower()} {descricao_produtos} valor {valor} pago com {forma_pagamento.lower()}"
 
-def print_formatado(dados):
-    # Imprime dados básicos
-    print(f"🔑 Chave de Acesso: {dados['chave_acesso']}")
-    print(f"🧾 Modelo: {dados['modelo']} | Série: {dados['serie']} | Número: {dados['numero']}")
-    print(f"🕒 Emissão: {dados['data_emissao']} {dados['hora_emissao']} | Saída: {dados['data_saida']} {dados['hora_saida']}")
+def gerar_imagem_tabela(dados, tipo_documento=None):
+    """
+    Gera uma imagem com a tabela de produtos usando Pillow.
     
-    # Lista de produtos
-    produtos = dados.get('produtos', [])
-
-    # Se quisermos imprimir todos os itens de produtos
-    for p in produtos:
-        print(
-            f"🛒 Número Item: {p['numero_item']} | "
-            f"Produto: {p['descricao']} | "
-            f"Qtd: {p['quantidade']} | "
-            f"Unidade: {p['unidade']} | "
-            f"Valor: R$ {p['valor']}"
-        )
-    
-    # Imprime demais dados da NF-e
-    print(f"💰 Valor Total: R$ {dados['valor_total_nota']}")
-    print(f"🏢 Emitente: {dados['emitente_nome']} | CNPJ: {dados['emitente_cnpj']} | IE: {dados['emitente_ie']} | UF: {dados['emitente_uf']}")
-    print(f"👤 Destinatário: {dados['destinatario_nome']} | CPF: {dados['destinatario_cpf']} | UF: {dados['destinatario_uf']}")
-    print(f"📦 Natureza: {dados['natureza_operacao']} | Tipo: {dados['tipo_operacao']}")
-    print(f"💳 Pagamento: {dados['descricao_meio_pagamento']}")
-    print(f"📌 Situação: {dados['situacao_atual']}")
-    print(f"📨 Protocolo: {dados['protocolo_autorizacao']}")
-    print(f"📅 Autorizado em: {dados['data_autorizacao']} | Inclusão: {dados['data_inclusao']}")
+    Args:
+        dados (dict): Dicionário com dados extraídos do documento
+        tipo_documento (str, optional): "nfe" para nota fiscal eletrônica ou 
+                                       "cupom" para cupom fiscal/QR code
+                                       
+    Returns:
+        str: Caminho para a imagem gerada ou None em caso de erro
+    """
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import os
+        import uuid
+        
+        # Se tipo_documento não foi fornecido, tentar detectar
+        if not tipo_documento:
+            if 'chave_acesso' in dados and dados['chave_acesso'] != 'Não encontrado':
+                tipo_documento = "nfe"
+            else:
+                tipo_documento = "cupom"
+                
+        logger.info(f"Gerando imagem para documento tipo: {tipo_documento}")
+        
+        # Obter lista de produtos conforme o tipo
+        produtos = dados.get('produtos', [])
+        if not produtos:
+            logger.warning("Nenhum produto encontrado nos dados para gerar imagem")
+            return None
+            
+        # Definir tamanho da imagem
+        largura = 800
+        altura = 200 + (len(produtos) * 35) + 150  # Espaço extra para cabeçalho e rodapé
+        
+        # Criar imagem com fundo branco
+        imagem = Image.new('RGB', (largura, altura), color=(255, 255, 255))
+        desenho = ImageDraw.Draw(imagem)
+        
+        # Tentar carregar fonte, ou usar fonte padrão
+        try:
+            # Fontes comuns em ambientes Docker/Linux
+            fontes_possiveis = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            ]
+            
+            # Tentar carregar qualquer uma das fontes
+            fonte_titulo = None
+            for fonte in fontes_possiveis:
+                if os.path.exists(fonte):
+                    fonte_titulo = ImageFont.truetype(fonte, 22)
+                    fonte_header = ImageFont.truetype(fonte, 18)
+                    fonte_normal = ImageFont.truetype(fonte, 16)
+                    break
+                    
+            # Se nenhuma fonte foi encontrada, usar fonte padrão
+            if not fonte_titulo:
+                fonte_titulo = ImageFont.load_default()
+                fonte_header = ImageFont.load_default()
+                fonte_normal = ImageFont.load_default()
+                
+        except Exception as e:
+            logger.warning(f"Erro ao carregar fontes: {e}. Usando fontes padrão.")
+            fonte_titulo = ImageFont.load_default()
+            fonte_header = ImageFont.load_default()
+            fonte_normal = ImageFont.load_default()
+        
+        # Desenhar cabeçalho específico conforme o tipo
+        y = 20
+        
+        if tipo_documento == "nfe":
+            desenho.text((20, y), "NOTA FISCAL ELETRÔNICA", fill=(0, 0, 0), font=fonte_titulo)
+            y += 40
+            
+            emitente = dados.get('emitente_nome', 'Emissor não identificado')
+            desenho.text((20, y), f"Emitente: {emitente}", fill=(0, 0, 0), font=fonte_normal)
+            y += 25
+            
+            cnpj = dados.get('emitente_cnpj', 'N/A')
+            desenho.text((20, y), f"CNPJ: {cnpj}", fill=(0, 0, 0), font=fonte_normal)
+            y += 25
+            
+            chave = dados.get('chave_acesso', 'N/A')
+            if len(chave) > 20:
+                chave = f"{chave[:15]}...{chave[-5:]}"
+            desenho.text((20, y), f"Chave: {chave}", fill=(0, 0, 0), font=fonte_normal)
+            y += 25
+            
+            data_emissao = f"{dados.get('data_emissao', '')} {dados.get('hora_emissao', '')}"
+            desenho.text((20, y), f"Emissão: {data_emissao}", fill=(0, 0, 0), font=fonte_normal)
+            
+        else:  # cupom fiscal
+            desenho.text((20, y), "CUPOM FISCAL", fill=(0, 0, 0), font=fonte_titulo)
+            y += 40
+            
+            # Para cupom fiscal, os dados podem vir de regex
+            loja = None
+            if 'emitente_nome' in dados:
+                loja = dados.get('emitente_nome')
+            elif hasattr(dados, 'get') and 'loja' in dados:
+                loja = dados.get('loja')
+                
+            if isinstance(loja, str):
+                desenho.text((20, y), f"Loja: {loja}", fill=(0, 0, 0), font=fonte_normal)
+            elif hasattr(loja, 'group'):
+                desenho.text((20, y), f"Loja: {loja.group(1).strip() if loja else 'Não identificada'}", 
+                             fill=(0, 0, 0), font=fonte_normal)
+            else:
+                desenho.text((20, y), "Loja: Não identificada", fill=(0, 0, 0), font=fonte_normal)
+            y += 25
+            
+            # CNPJ
+            cnpj = None
+            if 'cnpj' in dados:
+                cnpj = dados.get('cnpj')
+                
+            if isinstance(cnpj, str):
+                desenho.text((20, y), f"CNPJ: {cnpj}", fill=(0, 0, 0), font=fonte_normal)
+            elif hasattr(cnpj, 'group'):
+                desenho.text((20, y), f"CNPJ: {cnpj.group(1) if cnpj else 'Não identificado'}", 
+                             fill=(0, 0, 0), font=fonte_normal)
+            else:
+                desenho.text((20, y), "CNPJ: Não identificado", fill=(0, 0, 0), font=fonte_normal)
+            y += 25
+            
+            # Data de emissão
+            emissao = None
+            if 'data_emissao' in dados:
+                emissao = dados.get('data_emissao')
+                
+            if isinstance(emissao, str):
+                desenho.text((20, y), f"Emissão: {emissao}", fill=(0, 0, 0), font=fonte_normal)
+            elif hasattr(emissao, 'group'):
+                desenho.text((20, y), f"Emissão: {emissao.group(1) if emissao else 'Não identificada'}", 
+                             fill=(0, 0, 0), font=fonte_normal)
+            
+        # Espaço e linha divisória antes da tabela
+        y += 40
+        desenho.line([(20, y), (largura-20, y)], fill=(200, 200, 200), width=2)
+        y += 10
+        
+        # Cabeçalho da tabela
+        desenho.rectangle([(20, y), (largura-20, y+30)], fill=(230, 230, 230))
+        desenho.text((30, y+5), "Produto", fill=(0, 0, 0), font=fonte_header)
+        desenho.text((380, y+5), "Qtd", fill=(0, 0, 0), font=fonte_header)
+        desenho.text((470, y+5), "Unit", fill=(0, 0, 0), font=fonte_header)
+        desenho.text((600, y+5), "Total", fill=(0, 0, 0), font=fonte_header)
+        
+        # Desenhar linhas de produtos conforme o tipo
+        y += 30
+        total_geral = 0.0
+        
+        for produto in produtos:
+            if tipo_documento == "nfe":
+                nome = produto.get('descricao', 'Produto')
+                qtd = produto.get('quantidade', '1')
+                unidade = produto.get('unidade', '')
+                valor = produto.get('valor', '0')
+                
+                # Calcular o total para cada item se não estiver presente
+                try:
+                    qtd_num = float(str(qtd).replace(',', '.'))
+                    valor_num = float(str(valor).replace(',', '.'))
+                    total_item = f"{qtd_num * valor_num:.2f}".replace('.', ',')
+                except:
+                    total_item = "0,00"
+            else:
+                # Para cupom fiscal
+                nome = produto.get('nome', 'Produto')
+                qtd = produto.get('quantidade', '1')
+                unidade = ''
+                valor = produto.get('unitario', '0')
+                total_item = produto.get('total', '0')
+            
+            # Limitar tamanho do nome para caber na coluna
+            if len(nome) > 30:
+                nome = nome[:27] + "..."
+            
+            # Limpar formatação de preço
+            if isinstance(valor, str):
+                valor = valor.replace("R$", "").strip()
+            if isinstance(total_item, str):
+                total_item = total_item.replace("R$", "").strip()
+            
+            # Adicionar unidade à quantidade se disponível
+            qtd_display = f"{qtd} {unidade}".strip() if unidade else qtd
+            
+            # Desenhar linha de produto
+            desenho.text((30, y+5), nome, fill=(0, 0, 0), font=fonte_normal)
+            desenho.text((380, y+5), str(qtd_display), fill=(0, 0, 0), font=fonte_normal)
+            desenho.text((470, y+5), f"R$ {valor}", fill=(0, 0, 0), font=fonte_normal)
+            desenho.text((600, y+5), f"R$ {total_item}", fill=(0, 0, 0), font=fonte_normal)
+            
+            # Calcular total geral
+            try:
+                valor_total = float(str(total_item).replace(',', '.'))
+                total_geral += valor_total
+            except:
+                pass
+            
+            y += 35
+            desenho.line([(20, y), (largura-20, y)], fill=(200, 200, 200), width=1)
+        
+        # Desenhar total do documento
+        y += 15
+        if tipo_documento == "nfe":
+            total_nota = dados.get('valor_total_nota', str(total_geral))
+        else:
+            # Para cupom fiscal, o valor pode vir de regex
+            valor = dados.get('valor_total_nota', str(total_geral))
+            if hasattr(valor, 'group'):
+                total_nota = valor.group(1) if valor else str(total_geral)
+            else:
+                total_nota = str(valor)
+        
+        # Limpar formatação do total
+        if isinstance(total_nota, str):
+            total_nota = total_nota.replace("R$", "").strip()
+            
+        desenho.rectangle([(largura-270, y), (largura-20, y+30)], fill=(240, 240, 240))
+        desenho.text((largura-250, y+5), "TOTAL:", fill=(0, 0, 0), font=fonte_header)
+        desenho.text((largura-150, y+5), f"R$ {total_nota}", fill=(0, 0, 0), font=fonte_header)
+        
+        # Adicionar informação de pagamento
+        y += 45
+        if tipo_documento == "nfe":
+            pagamento = dados.get('descricao_meio_pagamento', 'Não identificado')
+        else:
+            pagamento = dados.get('forma_pagamento', 'Não identificado')
+            if hasattr(pagamento, 'group'):
+                pagamento = pagamento.group(1).strip() if pagamento else 'Não identificado'
+                
+        desenho.text((20, y+5), f"Pagamento: {pagamento}", fill=(0, 0, 0), font=fonte_normal)
+        
+        # Salvar em um arquivo temporário
+        arquivo_temp = f"temp_comprovante_{uuid.uuid4()}.png"
+        imagem.save(arquivo_temp)
+        
+        # Configurar limpeza automática após algum tempo
+        import threading
+        def limpar_arquivo():
+            try:
+                if os.path.exists(arquivo_temp):
+                    os.remove(arquivo_temp)
+                    logger.info(f"Arquivo temporário {arquivo_temp} removido com sucesso.")
+            except Exception as e:
+                logger.error(f"Erro ao remover arquivo temporário: {e}")
+                
+        # Agendar limpeza após 5 minutos
+        t = threading.Timer(300, limpar_arquivo)
+        t.daemon = True
+        t.start()
+        
+        return arquivo_temp
+        
+    except Exception as e:
+        logger.exception(f"Erro ao gerar imagem da tabela: {e}")
+        return None

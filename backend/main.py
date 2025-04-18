@@ -13,10 +13,10 @@ import re
 import fasttext
 
 from backend.utils import (
-    mensagem_ja_processada, registrar_mensagem_recebida, obter_schema_por_telefone
+    mensagem_ja_processada, registrar_mensagem_recebida, obter_schema_por_telefone, salvar_localizacao_usuario, obter_ultima_localizacao
 )
 from backend.services.scheduler import scheduler, agendar_lembrete_cron
-from backend.services.whatsapp_service import enviar_mensagem_whatsapp, obter_url_midia, baixar_midia
+from backend.services.whatsapp_service import enviar_mensagem_whatsapp, obter_url_midia, baixar_midia, enviar_imagem_whatsapp
 from backend.services.db_init import inicializar_bd
 from backend.services.api_service import (
     obter_cotacao_principais, obter_cotacao, buscar_cep, listar_moedas_disponiveis, listar_conversoes_disponiveis, listar_conversoes_disponiveis_moeda, MOEDAS, CONVERSOES, MOEDA_EMOJIS
@@ -29,15 +29,16 @@ from backend.services.usuarios_service import listar_usuarios_autorizados, revog
 from backend.services.token_service import gerar_token_acesso
 from backend.services.noticias_service import obter_boletim_the_news
 from backend.services.leitura_service import (
-    try_all_techniques, processar_qrcode_com_ocr, processar_codigodebarras_com_pdfplumber, gerar_descricao_para_classificacao
+    try_all_techniques, processar_qrcode_com_ocr, processar_codigodebarras_com_pdfplumber, gerar_descricao_para_classificacao, formatar_qrcode_para_whatsapp, formatar_codigodebarras_para_whatsapp, gerar_imagem_tabela
 )
 from backend.services.email_service import (
     buscar_credenciais_email,
     salvar_credenciais_email,
     formatar_emails_para_whatsapp,
-    get_emails_info,
+    get_emails_info, 
     listar_emails_cadastrados
 )
+from backend.services.maps_service import calcular_rota
 
 # Configuração básica de logging
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -123,10 +124,12 @@ async def receber_mensagem(request: Request):
         mensagem_obj = mensagens[0]
         telefone = mensagem_obj["from"]
         mensagem_id = mensagem_obj["id"]
-        timestamp_whatsapp = int(mensagem_obj["timestamp"])
-
+        
         # Proteção e roteamento por tipo de mídia
         tipo_msg = mensagem_obj.get("type")
+        
+        # O timestamp está sempre no objeto principal, independente do tipo de mensagem
+        timestamp_whatsapp = int(mensagem_obj["timestamp"])
 
         if mensagem_ja_processada(mensagem_id):
             logger.warning("⚠️ Mensagem já processada anteriormente: %s", mensagem_id)
@@ -595,6 +598,44 @@ async def receber_mensagem(request: Request):
                 await enviar_mensagem_whatsapp(telefone, resposta)
                 log_tempos(inicio, timestamp_whatsapp, logger, mensagem, telefone)
                 return {"status": "OK", "resposta": resposta}
+            elif mensagem_lower.startswith("rota ") or mensagem_lower.startswith("caminho "):
+                endereco_destino = mensagem[5:] if mensagem_lower.startswith("rota ") else mensagem[8:]
+                
+                # Verifica se o usuário enviou a localização antes (você precisaria armazenar isso)
+                ultima_localizacao = obter_ultima_localizacao(telefone)
+                
+                if ultima_localizacao:
+                    resultado = calcular_rota(
+                        endereco_destino, 
+                        lat_origem=ultima_localizacao["latitude"], 
+                        lng_origem=ultima_localizacao["longitude"]
+                    )
+                    
+                    if "erro" in resultado:
+                        resposta = f"❌ {resultado['erro']}"
+                    else:
+                        resposta = (
+                            f"🧭 *Rota calculada*\n\n"
+                            f"📍 *Destino:* {resultado['destino']['endereco']}\n"
+                            f"🚗 *Distância:* {resultado['distancia_km']} km\n"
+                            f"⏱️ *Tempo estimado:* {resultado['duracao_min']} minutos\n\n"
+                            f"🔗 [Ver no mapa]({resultado['map_url']})"
+                        )
+                else:
+                    # Se não tiver a localização do usuário, apenas informa sobre o destino
+                    resultado = calcular_rota(endereco_destino)
+                    
+                    if "erro" in resultado:
+                        resposta = f"❌ {resultado['erro']}"
+                    else:
+                        resposta = (
+                            f"📍 *Destino encontrado*\n\n"
+                            f"*Endereço:* {resultado['destino']['endereco']}\n\n"
+                            "Para calcular a rota completa, compartilhe sua localização atual."
+                        )
+                
+                await enviar_mensagem_whatsapp(telefone, resposta)
+                return {"status": "OK", "resposta": resposta}
             else:
                 resposta = (
                     "⚠️ Comando não reconhecido.\n"
@@ -602,7 +643,7 @@ async def receber_mensagem(request: Request):
                 )
                 await enviar_mensagem_whatsapp(telefone, resposta)
                 return {"status": "comando inválido", "resposta": resposta}
-        
+
         elif tipo_msg == "image" or tipo_msg == "document":
             media_id = mensagem_obj[mensagem_obj["type"]]["id"]
             telefone = mensagem_obj["from"]
@@ -647,16 +688,61 @@ async def receber_mensagem(request: Request):
 
             elif mensagem_obj["type"] == "document":
                 nome_arquivo = mensagem_obj["document"].get("filename", f"documento_{media_id}.pdf")
+                
+                await enviar_mensagem_whatsapp(telefone, "🔍 Analisando documento... aguarde um momento.")
 
                 if "Portal da Nota Fiscal Eletrônica" in nome_arquivo.lower():
                     dados = processar_codigodebarras_com_pdfplumber(caminho_arquivo)
+                    tipo_doc = "nfe"
                 else:
                     dados = processar_qrcode_com_ocr(caminho_arquivo)
+                    tipo_doc = "cupom"
+                
+                # Gerar imagem com o tipo explícito
+                caminho_imagem = gerar_imagem_tabela(dados, tipo_doc)
+                
+                if caminho_imagem:
+                    # Enviar a imagem com legenda
+                    await enviar_imagem_whatsapp(
+                        telefone, 
+                        caminho_imagem, 
+                        "📝 Comprovante de compra detectado"
+                    )
+                else:
+                    # Fallback para texto caso a geração da imagem falhe
+                    if tipo_doc == "nfe":
+                        texto_formatado = formatar_codigodebarras_para_whatsapp(dados)
+                    else:
+                        texto_formatado = formatar_qrcode_para_whatsapp(dados)
 
-                descricao = gerar_descricao_para_classificacao(dados)
-                await enviar_mensagem_whatsapp(telefone, f"📋 {descricao}\n✅ Gasto registrado com sucesso!")
+                #gasto = gerar_descricao_para_classificacao(dados)
+
+                #descricao, valor, categoria, meio_pagamento, parcelas = processar_mensagem(gasto)
+
+                await enviar_mensagem_whatsapp(telefone, f"{texto_formatado}\n✅ Gasto registrado com sucesso!")
+
                 return {"status": "OK", "mensagem": "PDF processado"}
-
+            
+        elif tipo_msg == "location":
+            logger.info(f"📍 Recebendo localização: {json.dumps(mensagem_obj['location'], indent=2)}")
+            
+            # Extrair as coordenadas corretamente da estrutura que está chegando
+            latitude = mensagem_obj["location"]["latitude"]
+            longitude = mensagem_obj["location"]["longitude"]
+            
+            # Salvar no banco de dados
+            salvar_localizacao_usuario(telefone, latitude, longitude)
+            
+            # Responder ao usuário
+            resposta = (
+                "📍 Obrigado por compartilhar sua localização!\n\n"
+                "Agora você pode usar os comandos:\n"
+                "• rota [endereço] - para calcular uma rota até o destino\n"
+                "• lugares [tipo] - para encontrar lugares próximos (ex: restaurantes, farmácias)"
+            )
+            
+            await enviar_mensagem_whatsapp(telefone, resposta)
+            return {"status": "OK", "mensagem": "Localização recebida"}
         else:
             logger.warning(f"❌ Tipo de mensagem não suportado: {tipo_msg}")
             await enviar_mensagem_whatsapp(
